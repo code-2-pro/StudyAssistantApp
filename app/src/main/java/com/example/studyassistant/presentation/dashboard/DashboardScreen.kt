@@ -2,9 +2,7 @@
 
 package com.example.studyassistant.presentation.dashboard
 
-import android.graphics.drawable.Icon
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,9 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,17 +38,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.studyassistant.domain.model.Subject
-import com.example.studyassistant.presentation.dashboard.components.CountCard
 import com.example.studyassistant.R
-import com.example.studyassistant.domain.model.Task
+import com.example.studyassistant.domain.model.Subject
 import com.example.studyassistant.presentation.dashboard.components.AddSubjectDialog
+import com.example.studyassistant.presentation.dashboard.components.CountCard
 import com.example.studyassistant.presentation.dashboard.components.DeleteDialog
 import com.example.studyassistant.presentation.dashboard.components.SubjectCard
 import com.example.studyassistant.presentation.dashboard.components.studySessionList
 import com.example.studyassistant.presentation.dashboard.components.taskList
+import com.example.studyassistant.sessions
+import com.example.studyassistant.subjects
+import com.example.studyassistant.tasks
 
 @Composable
 fun DashboardScreen(modifier: Modifier = Modifier) {
@@ -89,8 +87,8 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
     DeleteDialog(
         title = "Delete Session?",
         bodyText = "Are you sure, you want to delete this session?" +
-                "Your studied hours will be reduced by this session time." +
-                "This action can not be undone.",
+                " Your studied hours will be reduced by this session time." +
+                " This action can not be undone.",
         isOpen = isDeleteSessionDialogOpen,
         onDismissRequest = { isDeleteSessionDialogOpen = false },
         onConfirmationButtonClick = { isDeleteSessionDialogOpen = false }
@@ -118,7 +116,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
             item{
                 SubjectCardSection(
                     modifier = Modifier.fillMaxWidth(),
-                    subjectList = emptyList(),
+                    subjectList = subjects,
                     onAddIconClicked = {
                         isAddSubjectDialogOpen = true
                     }
@@ -138,7 +136,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
                 sectionTitle = "UPCOMING TASKS",
                 emptyListText = "You don't have any upcoming tasks.\n " +
                         "Click the + button in subject screen to add new task.",
-                tasks = emptyList(),
+                tasks = tasks,
                 onTaskCardClick = { TODO() },
                 onCheckBoxClick = { TODO() },
             )
@@ -149,7 +147,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
                 sectionTitle = "RECENT STUDY SESSIONS",
                 emptyListText = "You don't have any recent study sessions.\n " +
                         "Start a study session to begin recording your progress.",
-                sessions = emptyList(),
+                sessions = sessions,
                 onDeleteIconClick = { isDeleteSessionDialogOpen = true }
             )
         }

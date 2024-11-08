@@ -9,7 +9,7 @@ import com.example.studyassistant.presentation.theme.gradient5
 
 data class Subject(
     val name: String,
-    val goalHours: String,
+    val goalHours: Float,
     val colors: List<Color>,
     val subjectId: Int
 ){
