@@ -43,10 +43,23 @@ import com.example.studyassistant.presentation.components.SubjectListBottomSheet
 import com.example.studyassistant.presentation.components.studySessionList
 import com.example.studyassistant.sessions
 import com.example.studyassistant.subjects
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 
+@Destination
 @Composable
-fun SessionScreen(
+fun SessionScreenRoute (
+    navigator: DestinationsNavigator
+) {
+    SessionScreen(
+        onBackButtonClicked = { navigator.navigateUp() }
+    )
+}
+
+@Composable
+private fun SessionScreen(
+    onBackButtonClicked: () -> Unit
 ) {
 
     val scope = rememberCoroutineScope()
@@ -77,7 +90,9 @@ fun SessionScreen(
     )
 
     Scaffold(
-        topBar = { SessionScreenTopBar (onBackButtonClicked = { } ) }
+        topBar = { SessionScreenTopBar (
+            onBackButtonClicked = onBackButtonClicked
+        ) }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier

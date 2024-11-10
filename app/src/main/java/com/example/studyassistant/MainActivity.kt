@@ -4,21 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.studyassistant.domain.model.Session
 import com.example.studyassistant.domain.model.Subject
 import com.example.studyassistant.domain.model.Task
-import com.example.studyassistant.presentation.dashboard.DashboardScreen
-import com.example.studyassistant.presentation.session.SessionScreen
-import com.example.studyassistant.presentation.subject.SubjectScreen
-import com.example.studyassistant.presentation.task.TaskScreen
+import com.example.studyassistant.presentation.NavGraphs
 import com.example.studyassistant.presentation.theme.StudyAssistantTheme
+import com.ramcosta.composedestinations.DestinationsNavHost
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +17,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             StudyAssistantTheme {
-                SessionScreen()
+                DestinationsNavHost(navGraph = NavGraphs.root)
             }
         }
     }
