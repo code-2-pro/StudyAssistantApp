@@ -8,5 +8,5 @@ data class Task(
     val relatedToSubject: String,
     val isComplete: Boolean,
     val taskSubjectId: Int,
-    val taskId: Int
+    val taskId: Int?
 )
