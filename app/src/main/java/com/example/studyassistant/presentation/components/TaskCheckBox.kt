@@ -1,4 +1,4 @@
-package com.example.studyassistant.presentation.dashboard.components
+package com.example.studyassistant.presentation.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border

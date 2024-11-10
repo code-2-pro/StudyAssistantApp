@@ -44,11 +44,11 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.studyassistant.domain.model.Subject
-import com.example.studyassistant.presentation.dashboard.components.AddSubjectDialog
-import com.example.studyassistant.presentation.dashboard.components.CountCard
-import com.example.studyassistant.presentation.dashboard.components.DeleteDialog
-import com.example.studyassistant.presentation.dashboard.components.studySessionList
-import com.example.studyassistant.presentation.dashboard.components.taskList
+import com.example.studyassistant.presentation.components.AddSubjectDialog
+import com.example.studyassistant.presentation.components.CountCard
+import com.example.studyassistant.presentation.components.DeleteDialog
+import com.example.studyassistant.presentation.components.studySessionList
+import com.example.studyassistant.presentation.components.taskList
 import com.example.studyassistant.sessions
 import com.example.studyassistant.tasks
 

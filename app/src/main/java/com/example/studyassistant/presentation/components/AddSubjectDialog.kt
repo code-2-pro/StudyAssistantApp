@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.example.studyassistant.presentation.dashboard.components
+package com.example.studyassistant.presentation.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

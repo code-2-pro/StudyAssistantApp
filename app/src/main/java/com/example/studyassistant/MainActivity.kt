@@ -16,6 +16,7 @@ import com.example.studyassistant.domain.model.Subject
 import com.example.studyassistant.domain.model.Task
 import com.example.studyassistant.presentation.dashboard.DashboardScreen
 import com.example.studyassistant.presentation.subject.SubjectScreen
+import com.example.studyassistant.presentation.task.TaskScreen
 import com.example.studyassistant.presentation.theme.StudyAssistantTheme
 
 class MainActivity : ComponentActivity() {
@@ -24,7 +25,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             StudyAssistantTheme {
-                SubjectScreen()
+                TaskScreen()
             }
         }
     }
