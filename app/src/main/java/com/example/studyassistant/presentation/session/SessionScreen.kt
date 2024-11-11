@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.studyassistant.presentation.components.DeleteDialog
 import com.example.studyassistant.presentation.components.SubjectListBottomSheet
 import com.example.studyassistant.presentation.components.studySessionList
@@ -52,6 +52,9 @@ import kotlinx.coroutines.launch
 fun SessionScreenRoute (
     navigator: DestinationsNavigator
 ) {
+
+    val viewModel: SessionViewModel = hiltViewModel()
+
     SessionScreen(
         onBackButtonClicked = { navigator.navigateUp() }
     )

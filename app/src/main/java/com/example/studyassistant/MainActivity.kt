@@ -10,7 +10,10 @@ import com.example.studyassistant.domain.model.Task
 import com.example.studyassistant.presentation.NavGraphs
 import com.example.studyassistant.presentation.theme.StudyAssistantTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
+import dagger.hilt.android.AndroidEntryPoint
 
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
