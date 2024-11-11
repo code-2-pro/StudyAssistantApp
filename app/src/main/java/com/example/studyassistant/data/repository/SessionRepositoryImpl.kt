@@ -1,10 +1,13 @@
 package com.example.studyassistant.data.repository
 
 import com.example.studyassistant.data.local.dao.SessionDao
+import com.example.studyassistant.data.mapper.toSession
 import com.example.studyassistant.data.mapper.toSessionEntity
 import com.example.studyassistant.domain.model.Session
 import com.example.studyassistant.domain.repository.SessionRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.take
 import javax.inject.Inject
 
 class SessionRepositoryImpl @Inject constructor (
@@ -15,15 +18,21 @@ class SessionRepositoryImpl @Inject constructor (
     }
 
     override suspend fun deleteSession(session: Session) {
-        TODO("Not yet implemented")
+        sessionDao.deleteSession(session.toSessionEntity())
     }
 
     override fun getAllSessions(): Flow<List<Session>> {
-        TODO("Not yet implemented")
+        return sessionDao.getAllSessions().map { sessionEntities ->
+            sessionEntities.map { it ->
+                it.toSession()
+            }
+        }
     }
 
     override fun getRecentFiveSessions(): Flow<List<Session>> {
-        TODO("Not yet implemented")
+        return sessionDao.getAllSessions().take(count = 5).map { sessionEntities ->
+            sessionEntities.map { it.toSession() }
+        }
     }
 
     override fun getRecentTenSessionsForSubject(subjectId: Int): Flow<List<Session>> {
@@ -31,10 +40,10 @@ class SessionRepositoryImpl @Inject constructor (
     }
 
     override fun getTotalSessionsDuration(): Flow<Long> {
-        TODO("Not yet implemented")
+        return sessionDao.getTotalSessionDuration()
     }
 
     override fun getTotalSessionDurationBySubjectId(subjectId: Int): Flow<Long> {
-        TODO("Not yet implemented")
+        return sessionDao.getTotalSessionDurationBySubjectId(subjectId)
     }
 }

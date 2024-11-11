@@ -299,14 +299,14 @@ private fun SubjectOverviewSection (
         ) {
             CircularProgressIndicator(
                 modifier = Modifier.fillMaxSize(),
-                progress = 1f,
+                progress = { 1f },
                 strokeWidth = 4.dp,
                 strokeCap = StrokeCap.Round,
                 color = MaterialTheme.colorScheme.surfaceVariant
             )
             CircularProgressIndicator(
                 modifier = Modifier.fillMaxSize(),
-                progress = progress,
+                progress = { progress },
                 strokeWidth = 4.dp,
                 strokeCap = StrokeCap.Round
             )

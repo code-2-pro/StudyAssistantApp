@@ -10,8 +10,8 @@ import com.example.studyassistant.presentation.theme.gradient5
 data class Subject(
     val name: String,
     val goalHours: Float,
-    val colors: List<Color>,
-    val subjectId: Int?
+    val colors: List<Int>,
+    val subjectId: Int? = null
 ){
     companion object{
         val subjectCardColors = listOf(gradient1, gradient2, gradient3, gradient4, gradient5)

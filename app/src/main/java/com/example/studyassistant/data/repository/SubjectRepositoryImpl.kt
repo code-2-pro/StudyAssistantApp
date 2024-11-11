@@ -1,10 +1,12 @@
 package com.example.studyassistant.data.repository
 
 import com.example.studyassistant.data.local.dao.SubjectDao
+import com.example.studyassistant.data.mapper.toSubject
 import com.example.studyassistant.data.mapper.toSubjectEntity
 import com.example.studyassistant.domain.model.Subject
 import com.example.studyassistant.domain.repository.SubjectRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class SubjectRepositoryImpl @Inject constructor(
@@ -15,22 +17,26 @@ class SubjectRepositoryImpl @Inject constructor(
     }
 
     override fun getTotalSubjectCount(): Flow<Int> {
-        TODO("Not yet implemented")
+         return subjectDao.getTotalSubjectCount()
     }
 
     override fun getTotalGoalHours(): Flow<Float> {
-        TODO("Not yet implemented")
+        return subjectDao.getTotalGoalHours()
     }
 
     override suspend fun deleteSubject(subjectId: Int) {
-        TODO("Not yet implemented")
+        subjectDao.deleteSubject(subjectId)
     }
 
     override suspend fun getSubjectById(subjectId: Int): Subject? {
-        TODO("Not yet implemented")
+        return subjectDao.getSubjectById(subjectId)?.toSubject()
     }
 
     override fun getAllSubjects(): Flow<List<Subject>> {
-        TODO("Not yet implemented")
+        return subjectDao.getAllSubjects().map { subjectEntities ->
+            subjectEntities.map { it ->
+                it.toSubject()
+            }
+        }
     }
 }

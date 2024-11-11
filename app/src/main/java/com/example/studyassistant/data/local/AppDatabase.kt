@@ -12,7 +12,8 @@ import com.example.studyassistant.data.local.entity.TaskEntity
 
 @Database(
     entities = [SubjectEntity::class, SessionEntity::class, TaskEntity::class],
-    version = 1
+    version = 1,
+    exportSchema = false
 )
 
 @TypeConverters(ColorListConverter::class)
