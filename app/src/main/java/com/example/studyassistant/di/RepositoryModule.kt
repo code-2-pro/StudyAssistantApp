@@ -1,11 +1,11 @@
 package com.example.studyassistant.di
 
-import com.example.studyassistant.data.repository.SessionRepositoryImpl
-import com.example.studyassistant.data.repository.SubjectRepositoryImpl
-import com.example.studyassistant.data.repository.TaskRepositoryImpl
-import com.example.studyassistant.domain.repository.SessionRepository
-import com.example.studyassistant.domain.repository.SubjectRepository
-import com.example.studyassistant.domain.repository.TaskRepository
+import com.example.studyassistant.studytracker.data.repository.SessionRepositoryImpl
+import com.example.studyassistant.studytracker.data.repository.SubjectRepositoryImpl
+import com.example.studyassistant.studytracker.data.repository.TaskRepositoryImpl
+import com.example.studyassistant.studytracker.domain.repository.SessionRepository
+import com.example.studyassistant.studytracker.domain.repository.SubjectRepository
+import com.example.studyassistant.studytracker.domain.repository.TaskRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

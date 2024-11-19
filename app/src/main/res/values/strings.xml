@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">StudyAssistant</string>
+    <string name="error_subject_name_is_blank">Subject name is blank.</string>
+    <string name="error_subject_name_too_short">Subject name is too short.</string>
+    <string name="error_subject_name_too_long">Subject name is too long.</string>
+    <string name="error_goal_hours_is_blank">Goal hours is blank.</string>
+    <string name="error_goal_hours_is_invalid">Goal hours is invalid.</string>
+    <string name="error_goal_hours_is_at_least_one_hour">Goal hours is at least one hour.</string>
+    <string name="error_goal_hours_is_max_at_1000">Goal hours is max at 1000 hours.</string>
+    <string name="error_task_title_is_blank">Task title is blank.</string>
+    <string name="error_task_title_too_short">Task title is too short.</string>
+    <string name="error_task_title_too_long">Task title is too long.</string>
 </resources>
