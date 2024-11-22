@@ -19,7 +19,7 @@ interface SubjectDao {
     fun getTotalGoalHours(): Flow<Float>
 
     @Query("SELECT * FROM subjectentity WHERE subjectId = :subjectId")
-    fun getSubjectById(subjectId: Int): Flow<SubjectEntity>
+    fun getSubjectById(subjectId: Int): Flow<SubjectEntity?>
 
     @Query("DELETE FROM subjectentity WHERE subjectId = :subjectId")
     suspend fun deleteSubject(subjectId: Int)

@@ -8,6 +8,11 @@ sealed interface SubjectAction {
     object UpdateSubject: SubjectAction
     object DeleteSubject: SubjectAction
     object DeleteSession: SubjectAction
+    data class OnCancelSubjectChanges(
+        val previousName: String,
+        val previousGoalStudyHours: String,
+        val previousColor: List<Color>
+    ): SubjectAction
     data class OnTaskIsCompleteChange(val task: Task): SubjectAction
     data class OnSubjectCardColorChange(val color: List<Color>): SubjectAction
     data class OnSubjectNameChange(val name: String): SubjectAction

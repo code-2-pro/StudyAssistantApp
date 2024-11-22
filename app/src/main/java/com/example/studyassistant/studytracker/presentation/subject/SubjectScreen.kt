@@ -13,99 +13,92 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.studyassistant.core.presentation.util.SnackbarEvent
 import com.example.studyassistant.studytracker.presentation.components.AddSubjectDialog
 import com.example.studyassistant.studytracker.presentation.components.CountCard
 import com.example.studyassistant.studytracker.presentation.components.DeleteDialog
 import com.example.studyassistant.studytracker.presentation.components.studySessionList
 import com.example.studyassistant.studytracker.presentation.components.taskList
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.collectLatest
-
 
 @Composable
 fun SubjectScreen(
     state: SubjectState,
-    snackbarEvent: Flow<SnackbarEvent>,
+    listState: LazyListState,
+    onListScrolled: (firstVisibleItemIndex: Int) -> Unit,
+    isEditSubjectDialogOpen: Boolean,
+    isDeleteSubjectDialogOpen: Boolean,
+    onEditSubjectDialogVisibleChange: (Boolean) -> Unit,
+    onDeleteSubjectDialogVisibleChange: (Boolean) -> Unit,
     onAction: (SubjectAction) -> Unit,
     onBackButtonClick: () -> Unit,
-    onAddTaskButtonClick: () -> Unit,
     onTaskCardClick: (Int?) -> Unit
 ) {
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val listState = rememberLazyListState()
-    val isFABExpanded by remember{
-        derivedStateOf { listState.firstVisibleItemIndex == 0}
-    }
+    var isDeleteSessionDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var previousName by remember { mutableStateOf<String>("") }
+    var previousGoalHours by remember { mutableStateOf<String>("") }
+    var previousColors by remember { mutableStateOf<List<Color>> (emptyList()) }
 
-    var isEditSubjectDialogOpen by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    var isDeleteSessionDialogOpen by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    var isDeleteSubjectDialogOpen by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(key1 = true) {
-        snackbarEvent.collectLatest { event ->
-            when(event){
-                is SnackbarEvent.ShowSnackBar -> {
-                    snackbarHostState.showSnackbar(
-                        message = event.message,
-                        duration = event.duration
-                    )
-                }
-            }
+    LaunchedEffect(isEditSubjectDialogOpen) {
+        if(isEditSubjectDialogOpen){
+            previousName = state.subjectName
+            previousGoalHours = state.goalStudyHours
+            previousColors = state.subjectCardColors
+        }else{
+            previousName = ""
+            previousGoalHours = ""
+            previousColors = emptyList()
         }
+    }
+
+    // Observe the listState in the child
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { firstVisibleItemIndex ->
+                // Notify the parent of the scroll position
+                onListScrolled(firstVisibleItemIndex)
+            }
     }
 
     AddSubjectDialog(
         isOpen = isEditSubjectDialogOpen,
-        onDismissRequest = { isEditSubjectDialogOpen = false },
+        onDismissRequest = {
+            onAction(SubjectAction.OnCancelSubjectChanges(
+                previousName = previousName,
+                previousGoalStudyHours = previousGoalHours,
+                previousColor = previousColors
+            ))
+            onEditSubjectDialogVisibleChange(false)
+        },
         onConfirmationButtonClick = {
             onAction(SubjectAction.UpdateSubject)
-            isEditSubjectDialogOpen = false
+            onEditSubjectDialogVisibleChange(false)
         },
         selectedColors = state.subjectCardColors,
         subjectName = state.subjectName,
@@ -121,11 +114,11 @@ fun SubjectScreen(
                 " All the related tasks and study sessions will be permanently removed." +
                 " This action can not be undone.",
         isOpen = isDeleteSubjectDialogOpen,
-        onDismissRequest = { isDeleteSubjectDialogOpen = false },
+        onDismissRequest = { onDeleteSubjectDialogVisibleChange(false) },
         onConfirmationButtonClick = {
             onAction(SubjectAction.DeleteSubject)
-            isDeleteSubjectDialogOpen = false
-                onBackButtonClick()
+            onDeleteSubjectDialogVisibleChange(false)
+            onBackButtonClick()
         }
     )
 
@@ -141,86 +134,58 @@ fun SubjectScreen(
             isDeleteSessionDialogOpen = false
         }
     )
-
-    Scaffold (
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            SubjectScreenTopBar(
-                title = state.subjectName,
-                onBackButtonClick = onBackButtonClick,
-                onDeleteButtonClick = { isDeleteSubjectDialogOpen = true },
-                onEditButtonClick = { isEditSubjectDialogOpen = true },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAddTaskButtonClick,
-                icon = {
-                    Icon(
-                    imageVector = Icons.Default.Add,
-                        contentDescription = "Add"
-                )},
-                text = {Text(text = "Add Task")},
-                expanded = isFABExpanded
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        item{
+            SubjectOverviewSection(
+                studiedHours = state.studiedHours.toString(),
+                goalHours = state.goalStudyHours,
+                progress = state.progress,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
             )
         }
-    ){ paddingValues ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            item{
-                SubjectOverviewSection(
-                    studiedHours = state.studiedHours.toString(),
-                    goalHours = state.goalStudyHours,
-                    progress = state.progress,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                )
-            }
-            taskList(
-                sectionTitle = "UPCOMING TASKS",
-                emptyListText = "You don't have any upcoming tasks.\n " +
-                        "Click the + button to add new task.",
-                tasks = state.upcomingTasks,
-                onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { onAction(SubjectAction.OnTaskIsCompleteChange(it)) },
-            )
-            item{
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-            taskList(
-                sectionTitle = "COMPLETED TASKS",
-                emptyListText = "You don't have any completed tasks.\n " +
-                        "Click the check box on completion of task.",
-                tasks = state.completedTasks,
-                onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { onAction(SubjectAction.OnTaskIsCompleteChange(it)) },
-            )
-            item{
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-            studySessionList(
-                sectionTitle = "RECENT STUDY SESSIONS",
-                emptyListText = "You don't have any recent study sessions.\n " +
-                        "Start a study session to begin recording your progress.",
-                sessions = state.recentSessions,
-                onDeleteIconClick = {
-                    isDeleteSessionDialogOpen = true
-                    onAction(SubjectAction.OnDeleteSessionButtonClick(it))
-                }
-            )
+        taskList(
+            sectionTitle = "UPCOMING TASKS",
+            emptyListText = "You don't have any upcoming tasks.\n " +
+                    "Click the + button to add new task.",
+            tasks = state.upcomingTasks,
+            onTaskCardClick = onTaskCardClick,
+            onCheckBoxClick = { onAction(SubjectAction.OnTaskIsCompleteChange(it)) },
+        )
+        item{
+            Spacer(modifier = Modifier.height(20.dp))
         }
+        taskList(
+            sectionTitle = "COMPLETED TASKS",
+            emptyListText = "You don't have any completed tasks.\n " +
+                    "Click the check box on completion of task.",
+            tasks = state.completedTasks,
+            onTaskCardClick = onTaskCardClick,
+            onCheckBoxClick = { onAction(SubjectAction.OnTaskIsCompleteChange(it)) },
+        )
+        item{
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+        studySessionList(
+            sectionTitle = "RECENT STUDY SESSIONS",
+            emptyListText = "You don't have any recent study sessions.\n " +
+                    "Start a study session to begin recording your progress.",
+            sessions = state.recentSessions,
+            onDeleteIconClick = {
+                isDeleteSessionDialogOpen = true
+                onAction(SubjectAction.OnDeleteSessionButtonClick(it))
+            }
+        )
     }
+
 }
 
 @Composable
-private fun SubjectScreenTopBar (
+fun SubjectScreenTopBar (
     title: String,
     onBackButtonClick: () -> Unit,
     onDeleteButtonClick: () -> Unit,
@@ -252,7 +217,7 @@ private fun SubjectScreenTopBar (
                     contentDescription = "Delete Subject"
                 )
             }
-              IconButton(onClick = {onEditButtonClick()}) {
+            IconButton(onClick = {onEditButtonClick()}) {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "Edit Subject"
@@ -283,7 +248,7 @@ private fun SubjectOverviewSection (
             count = goalHours
         )
         Spacer(modifier = Modifier.width(10.dp))
-         CountCard(
+        CountCard(
             modifier = Modifier.weight(1f),
             headingText = "Study Hours",
             count = studiedHours,

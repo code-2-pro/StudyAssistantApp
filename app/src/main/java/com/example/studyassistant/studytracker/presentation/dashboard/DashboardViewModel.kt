@@ -4,6 +4,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.studyassistant.core.presentation.util.SnackbarController
 import com.example.studyassistant.core.presentation.util.SnackbarEvent
 import com.example.studyassistant.studytracker.domain.model.Session
 import com.example.studyassistant.studytracker.domain.model.Subject
@@ -13,14 +14,10 @@ import com.example.studyassistant.studytracker.domain.repository.SubjectReposito
 import com.example.studyassistant.studytracker.domain.repository.TaskRepository
 import com.example.studyassistant.studytracker.presentation.mapper.toHours
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -67,9 +64,6 @@ class DashboardViewModel @Inject constructor(
             initialValue = emptyList()
     )
 
-    private val _snackbarEvent = Channel<SnackbarEvent>()
-    val snackbarEvent = _snackbarEvent.receiveAsFlow()
-
     fun onAction(action: DashboardAction){
         when(action){
             is DashboardAction.OnSubjectNameChange -> {
@@ -114,13 +108,15 @@ class DashboardViewModel @Inject constructor(
                         goalStudyHours = ""
                     )
                 }
-                _snackbarEvent.send(
-                     SnackbarEvent.ShowSnackBar( message = "Subject saved successfully.")
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Subject saved successfully."
+                    )
                 )
             }catch (e: Exception){
-                _snackbarEvent.send(
-                    SnackbarEvent.ShowSnackBar(
-                        message =  "Couldn't save subject. ${e.message}",
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Couldn't save subject. ${e.message}",
                         duration =  SnackbarDuration.Long
                     )
                 )

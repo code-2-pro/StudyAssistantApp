@@ -34,9 +34,9 @@ class SubjectRepositoryImpl @Inject constructor(
         sessionDao.deleteSessionBySubjectId(subjectId)
     }
 
-    override fun getSubjectById(subjectId: Int): Flow<Subject> {
+    override fun getSubjectById(subjectId: Int): Flow<Subject?> {
         return subjectDao.getSubjectById(subjectId).map {
-            it.toSubject()
+            it?.toSubject()
         }
     }
 

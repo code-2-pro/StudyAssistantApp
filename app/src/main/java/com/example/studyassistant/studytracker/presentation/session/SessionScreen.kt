@@ -126,7 +126,7 @@ fun SessionScreen(
 }
 
 @Composable
-private fun SessionScreenTopBar (
+fun SessionScreenTopBar (
     onBackButtonClicked: () -> Unit
 ) {
     TopAppBar(

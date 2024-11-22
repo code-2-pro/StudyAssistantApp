@@ -25,15 +25,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,8 +38,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.studyassistant.R
-import com.example.studyassistant.core.presentation.util.ObserveAsEvents
-import com.example.studyassistant.core.presentation.util.SnackbarEvent
 import com.example.studyassistant.studytracker.domain.model.Session
 import com.example.studyassistant.studytracker.domain.model.Subject
 import com.example.studyassistant.studytracker.domain.model.Task
@@ -54,8 +47,6 @@ import com.example.studyassistant.studytracker.presentation.components.DeleteDia
 import com.example.studyassistant.studytracker.presentation.components.SubjectCard
 import com.example.studyassistant.studytracker.presentation.components.studySessionList
 import com.example.studyassistant.studytracker.presentation.components.taskList
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun DashboardScreen(
@@ -63,45 +54,13 @@ fun DashboardScreen(
     tasks: List<Task>,
     recentSessions: List<Session>,
     onAction: (DashboardAction) -> Unit,
-    snackbarEvent: Flow<SnackbarEvent>,
     onSubjectCardClick: (Int?) -> Unit,
     onTaskCardClick: (Int?) -> Unit,
     onStartSessionButtonClick: () -> Unit,
 ) {
 
-    var isAddSubjectDialogOpen by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    var isDeleteSessionDialogOpen by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(key1 = true) {
-        snackbarEvent.collectLatest { event ->
-            when(event){
-                is SnackbarEvent.ShowSnackBar -> {
-                    snackbarHostState.showSnackbar(
-                        message = event.message,
-                        duration = event.duration
-                    )
-                }
-            }
-        }
-    }
-
-//    ObserveAsEvents(events = snackbarEvent) { event ->
-//        when (event) {
-//            is SnackbarEvent.ShowSnackBar -> {
-//                snackbarHostState.showSnackbar(
-//                    message = event.message,
-//                    duration = event.duration
-//                )
-//            }
-//        }
-//    }
+    var isAddSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var isDeleteSessionDialogOpen by rememberSaveable { mutableStateOf(false) }
 
     AddSubjectDialog(
         isOpen = isAddSubjectDialogOpen,
@@ -130,74 +89,66 @@ fun DashboardScreen(
             isDeleteSessionDialogOpen = false
         }
     )
-
-    Scaffold (
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = { DashboardScreenTopBar() }
-
-    ) { paddingValue ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValue)
-        ) {
-            item{
-                CountCardSection(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    subjectCount = state.totalSubjectCount,
-                    studiedHours = state.totalStudiedHours.toString(),
-                    goalHours = state.totalGoalStudyHours.toString()
-                )
-            }
-            item{
-                SubjectCardSection(
-                    modifier = Modifier.fillMaxWidth(),
-                    subjectList = state.subjects,
-                    onAddIconClicked = {
-                        isAddSubjectDialogOpen = true
-                    },
-                    onSubjectCardClick = onSubjectCardClick
-                )
-            }
-            item{
-                Button(
-                    onClick = onStartSessionButtonClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 48.dp, vertical = 20.dp)
-                ) {
-                    Text(text = "Start Study Session")
-                }
-            }
-            taskList(
-                sectionTitle = "UPCOMING TASKS",
-                emptyListText = "You don't have any upcoming tasks.\n " +
-                        "Click the + button in subject screen to add new task.",
-                tasks = tasks,
-                onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { onAction(DashboardAction.OnTaskIsCompleteChange(it)) },
-            )
-            item{
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-            studySessionList(
-                sectionTitle = "RECENT STUDY SESSIONS",
-                emptyListText = "You don't have any recent study sessions.\n " +
-                        "Start a study session to begin recording your progress.",
-                sessions = recentSessions,
-                onDeleteIconClick = {
-                    onAction(DashboardAction.OnDeleteSessionButtonClick(it))
-                    isDeleteSessionDialogOpen = true
-                }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        item{
+            CountCardSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                subjectCount = state.totalSubjectCount,
+                studiedHours = state.totalStudiedHours.toString(),
+                goalHours = state.totalGoalStudyHours.toString()
             )
         }
+        item{
+            SubjectCardSection(
+                modifier = Modifier.fillMaxWidth(),
+                subjectList = state.subjects,
+                onAddIconClicked = {
+                    isAddSubjectDialogOpen = true
+                },
+                onSubjectCardClick = onSubjectCardClick
+            )
+        }
+        item{
+            Button(
+                onClick = onStartSessionButtonClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 48.dp, vertical = 20.dp)
+            ) {
+                Text(text = "Start Study Session")
+            }
+        }
+        taskList(
+            sectionTitle = "UPCOMING TASKS",
+            emptyListText = "You don't have any upcoming tasks.\n " +
+                    "Click the + button in subject screen to add new task.",
+            tasks = tasks,
+            onTaskCardClick = onTaskCardClick,
+            onCheckBoxClick = { onAction(DashboardAction.OnTaskIsCompleteChange(it)) },
+        )
+        item{
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+        studySessionList(
+            sectionTitle = "RECENT STUDY SESSIONS",
+            emptyListText = "You don't have any recent study sessions.\n " +
+                    "Start a study session to begin recording your progress.",
+            sessions = recentSessions,
+            onDeleteIconClick = {
+                onAction(DashboardAction.OnDeleteSessionButtonClick(it))
+                isDeleteSessionDialogOpen = true
+            }
+        )
     }
+
 }
 
 @Composable
-private fun DashboardScreenTopBar() {
+fun DashboardScreenTopBar() {
     CenterAlignedTopAppBar(
         title = {
             Text(
@@ -283,19 +234,19 @@ private fun SubjectCardSection(
                 textAlign = TextAlign.Center
             )
         }
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp)
-            ){
-                items(subjectList){ subject ->
-                    SubjectCard(
-                        subjectName = subject.name,
-                        gradientColors = subject.colors.map { Color(it) },
-                        onClick = { onSubjectCardClick(subject.subjectId) }
-                    )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp)
+        ){
+            items(subjectList){ subject ->
+                SubjectCard(
+                    subjectName = subject.name,
+                    gradientColors = subject.colors.map { Color(it) },
+                    onClick = { onSubjectCardClick(subject.subjectId) }
+                )
 
-                }
             }
+        }
     }
 }
 

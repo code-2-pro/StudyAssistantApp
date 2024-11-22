@@ -1,4 +1,4 @@
-package com.example.studyassistant
+package com.example.studyassistant.core.navigation
 
 import kotlinx.serialization.Serializable
 

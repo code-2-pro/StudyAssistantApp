@@ -13,7 +13,7 @@ interface SubjectRepository {
 
     suspend fun deleteSubject(subjectId: Int)
 
-    fun getSubjectById(subjectId: Int): Flow<Subject>
+    fun getSubjectById(subjectId: Int): Flow<Subject?>
 
     fun getAllSubjects(): Flow<List<Subject>>
 }

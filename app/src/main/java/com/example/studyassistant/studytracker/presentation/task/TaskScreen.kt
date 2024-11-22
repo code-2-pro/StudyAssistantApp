@@ -239,7 +239,7 @@ fun TaskScreen(
 
 
 @Composable
-private fun TaskScreenTopBar(
+fun TaskScreenTopBar(
     isTaskExist: Boolean,
     isComplete: Boolean,
     checkBoxBorderColor: Color,

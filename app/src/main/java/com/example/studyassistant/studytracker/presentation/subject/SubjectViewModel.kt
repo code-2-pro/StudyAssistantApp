@@ -7,7 +7,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import com.example.studyassistant.Route.SubjectScreen
+import com.example.studyassistant.core.navigation.Navigator
+import com.example.studyassistant.core.navigation.Route
+import com.example.studyassistant.core.navigation.Route.SubjectScreen
+import com.example.studyassistant.core.presentation.util.SnackbarController
 import com.example.studyassistant.core.presentation.util.SnackbarEvent
 import com.example.studyassistant.studytracker.domain.model.Subject
 import com.example.studyassistant.studytracker.domain.repository.SessionRepository
@@ -15,15 +18,15 @@ import com.example.studyassistant.studytracker.domain.repository.SubjectReposito
 import com.example.studyassistant.studytracker.domain.repository.TaskRepository
 import com.example.studyassistant.studytracker.presentation.mapper.toHours
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,6 +34,7 @@ class SubjectViewModel @Inject constructor(
     private val subjectRepository: SubjectRepository,
     private val taskRepository: TaskRepository,
     private val sessionRepository: SessionRepository,
+    private val navigator: Navigator,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
 
@@ -58,9 +62,6 @@ class SubjectViewModel @Inject constructor(
         initialValue = SubjectState()
     )
 
-    private val _snackbarEvent = Channel<SnackbarEvent>()
-    val snackbarEvent = _snackbarEvent.receiveAsFlow()
-
     init {
         fetchSubject()
     }
@@ -83,23 +84,35 @@ class SubjectViewModel @Inject constructor(
                 }
             }
             SubjectAction.UpdateSubject -> updateSubject()
-            SubjectAction.DeleteSession -> deleteSubject()
-            SubjectAction.DeleteSubject -> { TODO() }
+            is SubjectAction.OnCancelSubjectChanges -> {
+                _state.update {
+                    it.copy(
+                        subjectName = action.previousName,
+                        goalStudyHours = action.previousGoalStudyHours,
+                        subjectCardColors = action.previousColor
+                    )
+                }
+            }
+            SubjectAction.DeleteSubject -> deleteSubject()
+            SubjectAction.DeleteSession -> { TODO() }
             is SubjectAction.OnDeleteSessionButtonClick -> { TODO() }
             is SubjectAction.OnTaskIsCompleteChange -> { TODO() }
+
         }
     }
 
     private fun fetchSubject(){
         viewModelScope.launch{
-            subjectRepository.getSubjectById(navArgs.subjectId).collectLatest { subject ->
-                _state.update {
-                    it.copy(
-                        subjectName = subject.name.toString(),
-                        goalStudyHours = subject.goalHours.toString(),
-                        subjectCardColors = subject.colors.map { Color(it) },
-                        currentSubjectId = subject.subjectId
-                    )
+            subjectRepository.getSubjectById(navArgs.subjectId).collect { subject ->
+                subject?.let {
+                    _state.update {
+                        it.copy(
+                            subjectName = subject.name.toString(),
+                            goalStudyHours = subject.goalHours.toString(),
+                            subjectCardColors = subject.colors.map { Color(it) },
+                            currentSubjectId = subject.subjectId
+                        )
+                    }
                 }
             }
         }
@@ -116,12 +129,14 @@ class SubjectViewModel @Inject constructor(
                         colors = state.value.subjectCardColors.map { it.toArgb() }
                     )
                 )
-                _snackbarEvent.send(
-                    SnackbarEvent.ShowSnackBar(message = "Subject updated successfully.")
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Subject updated successfully."
+                    )
                 )
             }catch (e: Exception){
-                _snackbarEvent.send(
-                    SnackbarEvent.ShowSnackBar(
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
                         message = "Couldn't update subject. ${e.message}",
                         duration =  SnackbarDuration.Long
                     )
@@ -133,17 +148,29 @@ class SubjectViewModel @Inject constructor(
     private fun deleteSubject(){
         viewModelScope.launch{
             try {
-                state.value.currentSubjectId?.let {
-                    subjectRepository.deleteSubject(subjectId = it)
+                val currentSubjectId = state.value.currentSubjectId
+                if(currentSubjectId != null){
+                    withContext(Dispatchers.IO) {
+                        subjectRepository.deleteSubject(subjectId = currentSubjectId)
+                    }
+                    SnackbarController.sendEvent(
+                        event = SnackbarEvent(
+                            message = "Subject deleted successfully."
+                        )
+                    )
+                    navigator.navigateUp()
+                }else{
+                    SnackbarController.sendEvent(
+                        event = SnackbarEvent(
+                            message = "No Subject to delete."
+                        )
+                    )
                 }
-                _snackbarEvent.send(
-                    SnackbarEvent.ShowSnackBar(message = "Subject deleted successfully.")
-                )
             }catch (e: Exception){
-                _snackbarEvent.send(
-                    SnackbarEvent.ShowSnackBar(
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
                         message = "Couldn't delete subject. ${e.message}",
-                        duration = SnackbarDuration.Long
+                        duration =  SnackbarDuration.Long
                     )
                 )
             }
