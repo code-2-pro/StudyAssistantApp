@@ -56,7 +56,7 @@ fun SubjectScreen(
     onEditSubjectDialogVisibleChange: (Boolean) -> Unit,
     onDeleteSubjectDialogVisibleChange: (Boolean) -> Unit,
     onAction: (SubjectAction) -> Unit,
-    onBackButtonClick: () -> Unit,
+    onDeleteButtonClick: () -> Unit,
     onTaskCardClick: (Int?) -> Unit
 ) {
 
@@ -118,7 +118,6 @@ fun SubjectScreen(
         onConfirmationButtonClick = {
             onAction(SubjectAction.DeleteSubject)
             onDeleteSubjectDialogVisibleChange(false)
-            onBackButtonClick()
         }
     )
 
@@ -250,7 +249,7 @@ private fun SubjectOverviewSection (
         Spacer(modifier = Modifier.width(10.dp))
         CountCard(
             modifier = Modifier.weight(1f),
-            headingText = "Study Hours",
+            headingText = "Studied Hours",
             count = studiedHours,
         )
         Spacer(modifier = Modifier.width(10.dp))

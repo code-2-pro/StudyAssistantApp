@@ -87,8 +87,35 @@ class DashboardViewModel @Inject constructor(
                 }
             }
             DashboardAction.SaveSubject -> saveSubject()
-            DashboardAction.DeleteSession -> TODO()
-            is DashboardAction.OnTaskIsCompleteChange -> TODO()
+            DashboardAction.DeleteSession -> {
+
+            }
+            is DashboardAction.OnTaskIsCompleteChange -> {
+                updateTask(action.task)
+            }
+        }
+    }
+
+    private fun updateTask(task: Task) {
+        viewModelScope.launch{
+            try{
+                taskRepository.upsertTask(
+                    task = task.copy(isComplete = !task.isComplete)
+                )
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Saved in completed tasks."
+                    )
+                )
+            }catch (e: Exception){
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Couldn't update task. ${e.message}",
+                        duration =  SnackbarDuration.Long
+                    )
+                )
+            }
+
         }
     }
 

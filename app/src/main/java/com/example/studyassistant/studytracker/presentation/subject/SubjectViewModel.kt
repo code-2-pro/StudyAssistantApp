@@ -13,6 +13,7 @@ import com.example.studyassistant.core.navigation.Route.SubjectScreen
 import com.example.studyassistant.core.presentation.util.SnackbarController
 import com.example.studyassistant.core.presentation.util.SnackbarEvent
 import com.example.studyassistant.studytracker.domain.model.Subject
+import com.example.studyassistant.studytracker.domain.model.Task
 import com.example.studyassistant.studytracker.domain.repository.SessionRepository
 import com.example.studyassistant.studytracker.domain.repository.SubjectRepository
 import com.example.studyassistant.studytracker.domain.repository.TaskRepository
@@ -94,9 +95,11 @@ class SubjectViewModel @Inject constructor(
                 }
             }
             SubjectAction.DeleteSubject -> deleteSubject()
+            is SubjectAction.OnTaskIsCompleteChange -> {
+                updateTask(action.task)
+            }
             SubjectAction.DeleteSession -> { TODO() }
             is SubjectAction.OnDeleteSessionButtonClick -> { TODO() }
-            is SubjectAction.OnTaskIsCompleteChange -> { TODO() }
 
         }
     }
@@ -174,6 +177,37 @@ class SubjectViewModel @Inject constructor(
                     )
                 )
             }
+        }
+    }
+
+    private fun updateTask(task: Task) {
+        viewModelScope.launch{
+            try{
+                taskRepository.upsertTask(
+                    task = task.copy(isComplete = !task.isComplete)
+                )
+                if(task.isComplete){
+                    SnackbarController.sendEvent(
+                        event = SnackbarEvent(
+                            message = "Saved in upcoming tasks."
+                        )
+                    )
+                }else{
+                    SnackbarController.sendEvent(
+                        event = SnackbarEvent(
+                            message = "Saved in completed tasks."
+                        )
+                    )
+                }
+            }catch (e: Exception){
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Couldn't update task. ${e.message}",
+                        duration =  SnackbarDuration.Long
+                    )
+                )
+            }
+
         }
     }
 

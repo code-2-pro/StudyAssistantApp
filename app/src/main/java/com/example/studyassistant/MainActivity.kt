@@ -54,7 +54,9 @@ import com.example.studyassistant.studytracker.presentation.session.SessionViewM
 import com.example.studyassistant.studytracker.presentation.subject.SubjectScreen
 import com.example.studyassistant.studytracker.presentation.subject.SubjectScreenTopBar
 import com.example.studyassistant.studytracker.presentation.subject.SubjectViewModel
+import com.example.studyassistant.studytracker.presentation.task.TaskAction
 import com.example.studyassistant.studytracker.presentation.task.TaskScreen
+import com.example.studyassistant.studytracker.presentation.task.TaskScreenTopBar
 import com.example.studyassistant.studytracker.presentation.task.TaskViewModel
 import com.example.studyassistant.ui.theme.StudyAssistantTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -179,7 +181,11 @@ class MainActivity : ComponentActivity() {
                             fabContent = {
                                 ExtendedFloatingActionButton(
                                     onClick = {
-                                        navController.navigate(TaskScreen(taskId = null, subjectId = -1))
+                                        navController.navigate(
+                                            TaskScreen(
+                                                taskId = null,
+                                                subjectId = state.currentSubjectId)
+                                        )
                                     },
                                     icon = { Icon(Icons.Default.Add, contentDescription = "Add Task") },
                                     text = { Text("Add Task") },
@@ -200,7 +206,7 @@ class MainActivity : ComponentActivity() {
                                 onEditSubjectDialogVisibleChange = { isEditSubjectDialogOpen = it },
                                 onDeleteSubjectDialogVisibleChange = { isDeleteSubjectDialogOpen = it },
                                 onAction = viewModel::onAction,
-                                onBackButtonClick = { navController.navigateUp() },
+                                onDeleteButtonClick = { navController.navigateUp() },
                                 onTaskCardClick = { taskId ->
                                     navController.navigate(TaskScreen(
                                         taskId = taskId,
@@ -211,8 +217,26 @@ class MainActivity : ComponentActivity() {
                         }
                         composable<TaskScreen> {
                             val viewModel: TaskViewModel = hiltViewModel()
+                            val state by viewModel.state.collectAsStateWithLifecycle()
+                            var isDeleteDialogOpen by rememberSaveable { mutableStateOf(false) }
+                            topBarContent = {
+                                TaskScreenTopBar(
+                                    isTaskExist = state.currentTaskId != null,
+                                    isComplete = state.isTaskComplete,
+                                    checkBoxBorderColor = state.priority.color,
+                                    onBackButtonClick = { navController.navigateUp() },
+                                    onDeleteButtonClick = { isDeleteDialogOpen = true },
+                                    onCheckBoxClick = { viewModel.onAction(TaskAction.OnIsCompleteChange) }
+                                )
+                            }
+                            fabContent = { }
+                            scaffoldModifier = Modifier
                             TaskScreen(
-                                onBackButtonClick = { navController.navigateUp() }
+                                state = state,
+                                isDeleteDialogOpen = isDeleteDialogOpen,
+                                onDeleteDialogVisibleChange = { isDeleteDialogOpen = it },
+                                onAction = viewModel::onAction,
+                                onDeleteButtonClick  = { navController.navigateUp() }
                             )
                         }
                         composable<SessionScreen> {
