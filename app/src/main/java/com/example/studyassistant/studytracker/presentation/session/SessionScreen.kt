@@ -2,6 +2,14 @@
 
 package com.example.studyassistant.studytracker.presentation.session
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,20 +44,35 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studyassistant.sessions
 import com.example.studyassistant.studytracker.presentation.components.DeleteDialog
 import com.example.studyassistant.studytracker.presentation.components.SubjectListBottomSheet
 import com.example.studyassistant.studytracker.presentation.components.studySessionList
+import com.example.studyassistant.studytracker.presentation.util.Constants
+import com.example.studyassistant.studytracker.presentation.util.Constants.ACTION_SERVICE_CANCEL
+import com.example.studyassistant.studytracker.presentation.util.Constants.ACTION_SERVICE_START
+import com.example.studyassistant.studytracker.presentation.util.Constants.ACTION_SERVICE_STOP
 import com.example.studyassistant.subjects
+import com.example.studyassistant.ui.theme.Red
 import kotlinx.coroutines.launch
+import kotlin.concurrent.timer
 
 @Composable
 fun SessionScreen(
-    onBackButtonClicked: () -> Unit
+    onBackButtonClicked: () -> Unit,
+    timerService: StudySessionTimerService
 ) {
 
+    val hours by timerService.hours
+    val minutes by timerService.minutes
+    val seconds by timerService.seconds
+    val currentTimerState by timerService.currentTimerState
+
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
     var isBottomSheetOpen by remember { mutableStateOf(false) }
@@ -88,6 +112,9 @@ fun SessionScreen(
         ) {
             item{
                 TimerSection(
+                    hours = hours,
+                    minutes = minutes,
+                    seconds = seconds,
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
@@ -109,9 +136,24 @@ fun SessionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp),
-                    startButtonClick = {  },
-                    cancelButtonClick = {  },
-                    finishButtonClick = {  }
+                    startButtonClick = {
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = if(currentTimerState == TimerState.STARTED){
+                                ACTION_SERVICE_STOP
+                            }else ACTION_SERVICE_START
+                        )
+                    },
+                    cancelButtonClick = {
+                        ServiceHelper.triggerForegroundService(
+                        context = context,
+                        action = ACTION_SERVICE_CANCEL
+                    ) },
+                    finishButtonClick = {
+
+                    },
+                    timerState = currentTimerState,
+                    seconds = seconds
                 )
             }
             studySessionList(
@@ -149,7 +191,10 @@ fun SessionScreenTopBar (
 
 @Composable
 private fun TimerSection (
-    modifier: Modifier
+    modifier: Modifier,
+    hours: String,
+    minutes: String,
+    seconds: String
 ) {
     Box(
         modifier = modifier,
@@ -160,10 +205,39 @@ private fun TimerSection (
                 .size(250.dp)
                 .border(5.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
         )
-        Text(
-            text = "00:05:32",
-            style = MaterialTheme.typography.titleLarge.copy(fontSize = 45.sp)
-        )
+        Row {
+            AnimatedContent(
+                targetState = hours,
+                label = hours,
+                transitionSpec = { timerTextAnimation() }
+            ) { hours ->
+                Text(
+                    text = "$hours:",
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 45.sp)
+                )
+            }
+            AnimatedContent(
+                targetState = minutes,
+                label = minutes,
+                transitionSpec = { timerTextAnimation() }
+            ) { minutes ->
+                Text(
+                    text = "$minutes:",
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 45.sp)
+                )
+            }
+
+            AnimatedContent(
+                targetState = seconds,
+                label = seconds,
+                transitionSpec = { timerTextAnimation() }
+            ) { seconds ->
+                Text(
+                    text = seconds,
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 45.sp)
+                )
+            }
+        }
     }
 }
 
@@ -204,29 +278,55 @@ private fun ButtonsSection (
     modifier: Modifier,
     startButtonClick: () -> Unit,
     cancelButtonClick: () -> Unit,
-    finishButtonClick: () -> Unit
+    finishButtonClick: () -> Unit,
+    timerState: TimerState,
+    seconds: String
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Button(onClick = cancelButtonClick) {
+        Button(
+            onClick = cancelButtonClick,
+            enabled = seconds != "00" && timerState != TimerState.STARTED
+        ) {
             Text(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                 text = "Cancel"
             )
         }
-        Button(onClick = startButtonClick) {
+        Button(
+            onClick = startButtonClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if(timerState == TimerState.STARTED) Red
+                else MaterialTheme.colorScheme.primary,
+                contentColor = Color.White
+            )
+        ) {
             Text(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                text = "Start"
+                text = when(timerState){
+                    TimerState.STARTED -> "Stop"
+                    TimerState.STOPPED -> "Resume"
+                    else -> "Start"
+                }
             )
         }
-        Button(onClick = finishButtonClick) {
+        Button(
+            onClick = finishButtonClick,
+            enabled = seconds != "00" && timerState != TimerState.STARTED
+        ) {
             Text(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                 text = "Finish"
             )
         }
     }
+}
+
+private fun timerTextAnimation(duration: Int = 600): ContentTransform {
+    return slideInVertically(animationSpec = tween(duration)) { fullHeight -> fullHeight } +
+            fadeIn(animationSpec = tween(duration)) togetherWith
+            slideOutVertically(animationSpec = tween(duration)) { fullHeight -> -fullHeight } +
+            fadeOut(animationSpec = tween(duration))
 }

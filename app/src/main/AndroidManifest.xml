@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+
     <application
         android:name=".StudyAssistantApp"
         android:allowBackup="true"
@@ -23,7 +27,22 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <data android:scheme="https"/>
+                <data android:host="study_assistant.com"/>
+                <data android:host="www.study_assistant.com" />
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+
+                <action android:name="android.intent.action.VIEW"/>
+
+            </intent-filter>
         </activity>
+        <service
+            android:name=".studytracker.presentation.session.StudySessionTimerService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
     </application>
 
 </manifest>

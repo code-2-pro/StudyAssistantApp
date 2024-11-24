@@ -2,7 +2,13 @@
 
 package com.example.studyassistant
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -30,11 +36,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDeepLink
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import com.example.studyassistant.core.navigation.NavigationAction
 import com.example.studyassistant.core.navigation.Navigator
 import com.example.studyassistant.core.navigation.Route.DashboardScreen
@@ -51,6 +60,7 @@ import com.example.studyassistant.studytracker.presentation.dashboard.DashboardS
 import com.example.studyassistant.studytracker.presentation.dashboard.DashboardViewModel
 import com.example.studyassistant.studytracker.presentation.session.SessionScreen
 import com.example.studyassistant.studytracker.presentation.session.SessionViewModel
+import com.example.studyassistant.studytracker.presentation.session.StudySessionTimerService
 import com.example.studyassistant.studytracker.presentation.subject.SubjectScreen
 import com.example.studyassistant.studytracker.presentation.subject.SubjectScreenTopBar
 import com.example.studyassistant.studytracker.presentation.subject.SubjectViewModel
@@ -58,6 +68,7 @@ import com.example.studyassistant.studytracker.presentation.task.TaskAction
 import com.example.studyassistant.studytracker.presentation.task.TaskScreen
 import com.example.studyassistant.studytracker.presentation.task.TaskScreenTopBar
 import com.example.studyassistant.studytracker.presentation.task.TaskViewModel
+import com.example.studyassistant.studytracker.presentation.util.Constants.DEEPLINK_DOMAIN
 import com.example.studyassistant.ui.theme.StudyAssistantTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -70,187 +81,237 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var navigator: Navigator
 
+    private var isBound by mutableStateOf(false)
+    private lateinit var timerService: StudySessionTimerService
+    private val connection = object : ServiceConnection{
+        override fun onServiceConnected(p0: ComponentName?, service: IBinder?,
+        ) {
+            val binder = service as StudySessionTimerService.StudySessionTimerBinder
+            timerService = binder.getService()
+            isBound = true
+        }
+
+        override fun onServiceDisconnected(p0: ComponentName?) {
+            isBound = false
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Intent(this, StudySessionTimerService::class.java).also {intent ->
+            bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            StudyAssistantTheme {
-                var topBarContent by remember {
-                    mutableStateOf <@Composable () -> Unit> ({ })
-                }
-                // Workaround to set null for FAB
-                var fabContent by remember {
-                    mutableStateOf <@Composable (() -> Unit)> ({ })
-                }
-                var scaffoldModifier by remember { mutableStateOf<Modifier> (Modifier) }
-
-                val snackbarHostState = remember { SnackbarHostState() }
-                val scope = rememberCoroutineScope()
-                ObserveAsEvents(
-                    events = SnackbarController.events,
-                    snackbarHostState
-                ) { event ->
-                    scope.launch {
-                        snackbarHostState.currentSnackbarData?.dismiss()
-
-                        val result = snackbarHostState.showSnackbar(
-                            message = event.message,
-                            actionLabel = event.action?.name,
-                        )
-
-                        if(result == SnackbarResult.ActionPerformed) {
-                            event.action?.action?.invoke()
-                        }
+            if(isBound){
+                StudyAssistantTheme {
+                    var topBarContent by remember {
+                        mutableStateOf <@Composable () -> Unit> ({ })
                     }
-                }
-
-                Scaffold(
-                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-                    modifier = scaffoldModifier.fillMaxSize(),
-                    topBar =  topBarContent,
-                    floatingActionButton = fabContent,
-                ) { innerPadding ->
-                    val navController = rememberNavController()
-
-                    ObserveAsEvents(events = navigator.navigationActions) { action ->
-                        when(action) {
-                            is NavigationAction.Navigate -> navController.navigate(
-                                action.route
-                            ) {
-                                action.navOptions(this)
-                            }
-                            NavigationAction.NavigateUp -> navController.navigateUp()
-                        }
+                    // Workaround to set null for FAB
+                    var fabContent by remember {
+                        mutableStateOf <@Composable (() -> Unit)> ({ })
                     }
+                    var scaffoldModifier by remember { mutableStateOf<Modifier> (Modifier) }
 
-                    NavHost(
-                        navController = navController,
-                        startDestination = navigator.startDestination,
-                        modifier = Modifier.padding(innerPadding)
-                    ) {
-                        composable<DashboardScreen> {
-                            val viewModel: DashboardViewModel = hiltViewModel()
-                            val state by viewModel.state.collectAsStateWithLifecycle()
-                            val tasks by viewModel.tasks.collectAsStateWithLifecycle()
-                            val recentSessions by viewModel.recentSessions.collectAsStateWithLifecycle()
+                    val snackbarHostState = remember { SnackbarHostState() }
+                    val scope = rememberCoroutineScope()
+                    ObserveAsEvents(
+                        events = SnackbarController.events,
+                        snackbarHostState
+                    ) { event ->
+                        scope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
 
-                            topBarContent = { DashboardScreenTopBar() }
-                            fabContent = { }
-                            scaffoldModifier = Modifier
-
-                            DashboardScreen(
-                                state = state,
-                                tasks = tasks,
-                                recentSessions = recentSessions,
-                                onAction = viewModel::onAction,
-                                onSubjectCardClick = { subjectId ->
-                                    subjectId?.let {
-                                        navController.navigate(SubjectScreen(subjectId = subjectId))
-                                    }
-                                },
-                                onTaskCardClick = { taskId ->
-                                    navController.navigate(TaskScreen(
-                                        taskId = taskId,
-                                        subjectId = null
-                                    ))
-                                },
-                                onStartSessionButtonClick = {
-                                    navController.navigate(SessionScreen)
-                                },
+                            val result = snackbarHostState.showSnackbar(
+                                message = event.message,
+                                actionLabel = event.action?.name,
                             )
+
+                            if(result == SnackbarResult.ActionPerformed) {
+                                event.action?.action?.invoke()
+                            }
                         }
-                        composable<SubjectScreen> {
-                            val viewModel: SubjectViewModel = hiltViewModel()
-                            val state by viewModel.state.collectAsStateWithLifecycle()
-                            val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-                            var isEditSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
-                            var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
-                            val listState = rememberLazyListState()
-                            // Manage the FAB state in the parent
-                            var isFABExpanded by remember { mutableStateOf(true) }
+                    }
 
-                            topBarContent = {
-                                SubjectScreenTopBar(
-                                    title = state.subjectName,
-                                    onBackButtonClick = { navController.navigateUp() },
-                                    onDeleteButtonClick = { isDeleteSubjectDialogOpen = true },
-                                    onEditButtonClick = { isEditSubjectDialogOpen = true },
-                                    scrollBehavior = scrollBehavior,
-                                )
-                            }
-                            fabContent = {
-                                ExtendedFloatingActionButton(
-                                    onClick = {
-                                        navController.navigate(
-                                            TaskScreen(
-                                                taskId = null,
-                                                subjectId = state.currentSubjectId)
-                                        )
-                                    },
-                                    icon = { Icon(Icons.Default.Add, contentDescription = "Add Task") },
-                                    text = { Text("Add Task") },
-                                    expanded = isFABExpanded
-                                )
-                            }
-                            scaffoldModifier = Modifier
-                                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    Scaffold(
+                        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                        modifier = scaffoldModifier.fillMaxSize(),
+                        topBar =  topBarContent,
+                        floatingActionButton = fabContent,
+                    ) { innerPadding ->
+                        val navController = rememberNavController()
 
-                            SubjectScreen(
-                                state = state,
-                                listState = listState,
-                                onListScrolled = { firstVisibleItemIndex ->
-                                    isFABExpanded = firstVisibleItemIndex == 0
-                                },
-                                isEditSubjectDialogOpen = isEditSubjectDialogOpen,
-                                isDeleteSubjectDialogOpen = isDeleteSubjectDialogOpen,
-                                onEditSubjectDialogVisibleChange = { isEditSubjectDialogOpen = it },
-                                onDeleteSubjectDialogVisibleChange = { isDeleteSubjectDialogOpen = it },
-                                onAction = viewModel::onAction,
-                                onDeleteButtonClick = { navController.navigateUp() },
-                                onTaskCardClick = { taskId ->
-                                    navController.navigate(TaskScreen(
-                                        taskId = taskId,
-                                        subjectId = null
-                                    ))
+                        ObserveAsEvents(events = navigator.navigationActions) { action ->
+                            when(action) {
+                                is NavigationAction.Navigate -> navController.navigate(
+                                    action.route
+                                ) {
+                                    action.navOptions(this)
                                 }
-                            )
+                                NavigationAction.NavigateUp -> navController.navigateUp()
+                            }
                         }
-                        composable<TaskScreen> {
-                            val viewModel: TaskViewModel = hiltViewModel()
-                            val state by viewModel.state.collectAsStateWithLifecycle()
-                            var isDeleteDialogOpen by rememberSaveable { mutableStateOf(false) }
-                            topBarContent = {
-                                TaskScreenTopBar(
-                                    isTaskExist = state.currentTaskId != null,
-                                    isComplete = state.isTaskComplete,
-                                    checkBoxBorderColor = state.priority.color,
-                                    onBackButtonClick = { navController.navigateUp() },
-                                    onDeleteButtonClick = { isDeleteDialogOpen = true },
-                                    onCheckBoxClick = { viewModel.onAction(TaskAction.OnIsCompleteChange) }
+
+                        NavHost(
+                            navController = navController,
+
+                            startDestination = navigator.startDestination,
+                            modifier = Modifier.padding(innerPadding)
+                        ) {
+                            composable<DashboardScreen> {
+                                val viewModel: DashboardViewModel = hiltViewModel()
+                                val state by viewModel.state.collectAsStateWithLifecycle()
+                                val tasks by viewModel.tasks.collectAsStateWithLifecycle()
+                                val recentSessions by viewModel.recentSessions.collectAsStateWithLifecycle()
+
+                                topBarContent = { DashboardScreenTopBar() }
+                                fabContent = { }
+                                scaffoldModifier = Modifier
+
+                                DashboardScreen(
+                                    state = state,
+                                    tasks = tasks,
+                                    recentSessions = recentSessions,
+                                    onAction = viewModel::onAction,
+                                    onSubjectCardClick = { subjectId ->
+                                        subjectId?.let {
+                                            navController.navigate(SubjectScreen(subjectId = subjectId))
+                                        }
+                                    },
+                                    onTaskCardClick = { taskId ->
+                                        navController.navigate(TaskScreen(
+                                            taskId = taskId,
+                                            subjectId = null
+                                        ))
+                                    },
+                                    onStartSessionButtonClick = {
+                                        navController.navigate(SessionScreen)
+                                    },
                                 )
                             }
-                            fabContent = { }
-                            scaffoldModifier = Modifier
-                            TaskScreen(
-                                state = state,
-                                isDeleteDialogOpen = isDeleteDialogOpen,
-                                onDeleteDialogVisibleChange = { isDeleteDialogOpen = it },
-                                onAction = viewModel::onAction,
-                                onDeleteButtonClick  = { navController.navigateUp() }
-                            )
-                        }
-                        composable<SessionScreen> {
-                            val viewModel: SessionViewModel = hiltViewModel()
-                            SessionScreen(
-                                onBackButtonClicked = { navController.navigateUp() }
-                            )
+                            composable<SubjectScreen> {
+                                val viewModel: SubjectViewModel = hiltViewModel()
+                                val state by viewModel.state.collectAsStateWithLifecycle()
+                                val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+                                var isEditSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
+                                var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
+                                val listState = rememberLazyListState()
+                                // Manage the FAB state in the parent
+                                var isFABExpanded by remember { mutableStateOf(true) }
+
+                                topBarContent = {
+                                    SubjectScreenTopBar(
+                                        title = state.subjectName,
+                                        onBackButtonClick = { navController.navigateUp() },
+                                        onDeleteButtonClick = { isDeleteSubjectDialogOpen = true },
+                                        onEditButtonClick = { isEditSubjectDialogOpen = true },
+                                        scrollBehavior = scrollBehavior,
+                                    )
+                                }
+                                fabContent = {
+                                    ExtendedFloatingActionButton(
+                                        onClick = {
+                                            navController.navigate(
+                                                TaskScreen(
+                                                    taskId = null,
+                                                    subjectId = state.currentSubjectId)
+                                            )
+                                        },
+                                        icon = { Icon(Icons.Default.Add, contentDescription = "Add Task") },
+                                        text = { Text("Add Task") },
+                                        expanded = isFABExpanded
+                                    )
+                                }
+                                scaffoldModifier = Modifier
+                                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+
+                                SubjectScreen(
+                                    state = state,
+                                    listState = listState,
+                                    onListScrolled = { firstVisibleItemIndex ->
+                                        isFABExpanded = firstVisibleItemIndex == 0
+                                    },
+                                    isEditSubjectDialogOpen = isEditSubjectDialogOpen,
+                                    isDeleteSubjectDialogOpen = isDeleteSubjectDialogOpen,
+                                    onEditSubjectDialogVisibleChange = { isEditSubjectDialogOpen = it },
+                                    onDeleteSubjectDialogVisibleChange = { isDeleteSubjectDialogOpen = it },
+                                    onAction = viewModel::onAction,
+                                    onDeleteButtonClick = { navController.navigateUp() },
+                                    onTaskCardClick = { taskId ->
+                                        navController.navigate(TaskScreen(
+                                            taskId = taskId,
+                                            subjectId = null
+                                        ))
+                                    }
+                                )
+                            }
+                            composable<TaskScreen> {
+                                val viewModel: TaskViewModel = hiltViewModel()
+                                val state by viewModel.state.collectAsStateWithLifecycle()
+                                var isDeleteDialogOpen by rememberSaveable { mutableStateOf(false) }
+                                topBarContent = {
+                                    TaskScreenTopBar(
+                                        isTaskExist = state.currentTaskId != null,
+                                        isComplete = state.isTaskComplete,
+                                        checkBoxBorderColor = state.priority.color,
+                                        onBackButtonClick = { navController.navigateUp() },
+                                        onDeleteButtonClick = { isDeleteDialogOpen = true },
+                                        onCheckBoxClick = { viewModel.onAction(TaskAction.OnIsCompleteChange) }
+                                    )
+                                }
+                                fabContent = { }
+                                scaffoldModifier = Modifier
+                                TaskScreen(
+                                    state = state,
+                                    isDeleteDialogOpen = isDeleteDialogOpen,
+                                    onDeleteDialogVisibleChange = { isDeleteDialogOpen = it },
+                                    onAction = viewModel::onAction,
+                                    onDeleteButtonClick  = { navController.navigateUp() }
+                                )
+                            }
+                            composable<SessionScreen>(
+                                deepLinks = listOf(
+                                    navDeepLink <SessionScreen> (
+                                        basePath = "https://$DEEPLINK_DOMAIN"
+                                    )
+                                )
+                            ) {
+                                val viewModel: SessionViewModel = hiltViewModel()
+                                SessionScreen(
+                                    timerService = timerService,
+                                    onBackButtonClicked = { navController.navigateUp() }
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+        requestPermission()
+    }
+
+    private fun requestPermission(){
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                0
+            )
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unbindService(connection)
+        isBound = false
     }
 }
+
 
 val subjects = listOf(
     Subject(
