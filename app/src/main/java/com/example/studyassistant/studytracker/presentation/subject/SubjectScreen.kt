@@ -86,6 +86,10 @@ fun SubjectScreen(
             }
     }
 
+    LaunchedEffect(key1 = state.studiedHours, key2 = state.goalStudyHours) {
+        onAction(SubjectAction.UpdateProgress)
+    }
+
     AddSubjectDialog(
         isOpen = isEditSubjectDialogOpen,
         onDismissRequest = {

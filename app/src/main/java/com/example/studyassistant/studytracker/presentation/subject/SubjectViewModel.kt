@@ -49,13 +49,11 @@ class SubjectViewModel @Inject constructor(
         sessionRepository.getRecentTenSessionsForSubject(navArgs.subjectId),
         sessionRepository.getTotalSessionDurationBySubject(navArgs.subjectId)
     ){ state, upcomingTasks, completedTasks, recentSessions, totalSessionDuration ->
-        val goalStudyHours = state.goalStudyHours.toFloatOrNull() ?: 1f
             state.copy(
                 upcomingTasks = upcomingTasks,
                 completedTasks = completedTasks,
                 recentSessions = recentSessions,
                 studiedHours = totalSessionDuration.toHours(),
-                progress = (state.studiedHours / goalStudyHours).coerceIn(0f, 1f)
             )
     }.stateIn(
         scope = viewModelScope,
@@ -98,9 +96,20 @@ class SubjectViewModel @Inject constructor(
             is SubjectAction.OnTaskIsCompleteChange -> {
                 updateTask(action.task)
             }
-            SubjectAction.DeleteSession -> { TODO() }
-            is SubjectAction.OnDeleteSessionButtonClick -> { TODO() }
-
+            is SubjectAction.OnDeleteSessionButtonClick -> {
+                _state.update {
+                    it.copy(session = action.session)
+                }
+            }
+            SubjectAction.DeleteSession ->  deleteSession()
+            SubjectAction.UpdateProgress -> {
+                val goalStudyHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f
+                _state.update {
+                    it.copy(
+                        progress = (state.value.studiedHours / goalStudyHours).coerceIn(0f, 1f)
+                    )
+                }
+            }
         }
     }
 
@@ -208,6 +217,26 @@ class SubjectViewModel @Inject constructor(
                 )
             }
 
+        }
+    }
+
+    private fun deleteSession() {
+        viewModelScope.launch{
+            try {
+                state.value.session?.let {
+                    sessionRepository.deleteSession(it)
+                }
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(message = "Session deleted successfully.")
+                )
+            }catch (e: Exception){
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Couldn't delete session. ${e.message}",
+                        duration = SnackbarDuration.Long
+                    )
+                )
+            }
         }
     }
 

@@ -28,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
@@ -55,8 +54,6 @@ import com.example.studyassistant.studytracker.presentation.components.TaskDateP
 import com.example.studyassistant.studytracker.presentation.mapper.changeMillisToDateString
 import com.example.studyassistant.studytracker.presentation.util.CurrentOrFutureSelectableDates
 import com.example.studyassistant.studytracker.presentation.util.Priority
-import com.example.studyassistant.subjects
-import com.example.studyassistant.ui.theme.Red
 import kotlinx.coroutines.launch
 
 @Composable
@@ -64,8 +61,7 @@ fun TaskScreen(
     state: TaskState,
     isDeleteDialogOpen: Boolean,
     onDeleteDialogVisibleChange: (Boolean) -> Unit,
-    onAction: (TaskAction) -> Unit,
-    onDeleteButtonClick: () -> Unit
+    onAction: (TaskAction) -> Unit
 ) {
 
     var isDatePickerDialogOpen by rememberSaveable { mutableStateOf(false) }

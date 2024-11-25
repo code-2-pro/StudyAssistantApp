@@ -11,5 +11,5 @@ object Constants {
 
     const val CLICK_REQUEST_CODE = 100
 
-    const val DEEPLINK_DOMAIN = "study_assistant.com"
+    const val DEEPLINK_DOMAIN = "study_assistant"
 }

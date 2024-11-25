@@ -42,9 +42,8 @@ class SubjectRepositoryImpl @Inject constructor(
 
     override fun getAllSubjects(): Flow<List<Subject>> {
         return subjectDao.getAllSubjects().map { subjectEntities ->
-            subjectEntities.map { it ->
-                it.toSubject()
-            }
+            subjectEntities
+                .map { it.toSubject() }
         }
     }
 }

@@ -23,22 +23,27 @@ class SessionRepositoryImpl @Inject constructor (
 
     override fun getAllSessions(): Flow<List<Session>> {
         return sessionDao.getAllSessions().map { sessionEntities ->
-            sessionEntities.map { it ->
-                it.toSession()
-            }
+            sessionEntities
+                .sortedByDescending { it.date }
+                .map { it -> it.toSession() }
         }
     }
 
     override fun getRecentFiveSessions(): Flow<List<Session>> {
-        return sessionDao.getAllSessions().take(count = 5).map { sessionEntities ->
-            sessionEntities.map { it.toSession() }
+        return sessionDao.getAllSessions().map { sessionEntities ->
+            sessionEntities
+                .sortedByDescending { it.date }
+                .take(5)
+                .map { it.toSession() }
         }
     }
 
     override fun getRecentTenSessionsForSubject(subjectId: Int): Flow<List<Session>> {
-        return sessionDao.getRecentSessionForSubject(subjectId).take(count = 10)
-            .map { sessionEntities ->
-            sessionEntities.map { it.toSession() }
+       return sessionDao.getRecentSessionForSubject(subjectId).map { sessionEntities ->
+            sessionEntities
+                .sortedByDescending { it.date }
+                .take(10)
+                .map { it.toSession() }
         }
     }
 

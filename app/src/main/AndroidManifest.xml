@@ -28,15 +28,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter>
-                <data android:scheme="https"/>
-                <data android:host="study_assistant.com"/>
-                <data android:host="www.study_assistant.com" />
+                <data android:scheme="study_assistant"/>
+                <data android:host="study_assistant"/>
 
                 <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-
-                <action android:name="android.intent.action.VIEW"/>
-
             </intent-filter>
         </activity>
         <service

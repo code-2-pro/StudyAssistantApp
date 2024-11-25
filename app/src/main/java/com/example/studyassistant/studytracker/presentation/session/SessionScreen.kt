@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,22 +49,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.studyassistant.sessions
 import com.example.studyassistant.studytracker.presentation.components.DeleteDialog
 import com.example.studyassistant.studytracker.presentation.components.SubjectListBottomSheet
 import com.example.studyassistant.studytracker.presentation.components.studySessionList
-import com.example.studyassistant.studytracker.presentation.util.Constants
 import com.example.studyassistant.studytracker.presentation.util.Constants.ACTION_SERVICE_CANCEL
 import com.example.studyassistant.studytracker.presentation.util.Constants.ACTION_SERVICE_START
 import com.example.studyassistant.studytracker.presentation.util.Constants.ACTION_SERVICE_STOP
-import com.example.studyassistant.subjects
 import com.example.studyassistant.ui.theme.Red
 import kotlinx.coroutines.launch
-import kotlin.concurrent.timer
+import kotlin.time.DurationUnit
 
 @Composable
 fun SessionScreen(
-    onBackButtonClicked: () -> Unit,
+    state: SessionState,
+    onAction: (SessionAction) -> Unit,
     timerService: StudySessionTimerService
 ) {
 
@@ -79,14 +78,25 @@ fun SessionScreen(
 
     var isDeleteDialogOpen by rememberSaveable { mutableStateOf(false) }
 
+    LaunchedEffect(key1 = state.subjects) {
+        val subjectId = timerService.subjectId.value
+        onAction(
+            SessionAction.UpdateSubjectIdAndRelatedSubject(
+                subjectId = subjectId,
+                relatedToSubject = state.subjects.find { it.subjectId == subjectId }?.name
+            )
+        )
+    }
+
     SubjectListBottomSheet(
         sheetState = sheetState,
         isOpen = isBottomSheetOpen,
-        subjects = subjects,
-        onSubjectClicked = {
+        subjects = state.subjects,
+        onSubjectClicked = {subject ->
             scope.launch{ sheetState.hide() }.invokeOnCompletion {
                 if (!sheetState.isVisible) isBottomSheetOpen = false
             }
+            onAction(SessionAction.OnRelatedSubjectChange(subject))
         },
         onDismissRequest = { isBottomSheetOpen = false }
     )
@@ -97,74 +107,84 @@ fun SessionScreen(
                 "This action can not be undone.",
         isOpen = isDeleteDialogOpen,
         onDismissRequest = { isDeleteDialogOpen = false },
-        onConfirmationButtonClick = { isDeleteDialogOpen = false },
+        onConfirmationButtonClick = {
+            onAction(SessionAction.DeleteSession)
+            isDeleteDialogOpen = false
+        },
     )
 
-    Scaffold(
-        topBar = { SessionScreenTopBar (
-            onBackButtonClicked = onBackButtonClicked
-        ) }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            item{
-                TimerSection(
-                    hours = hours,
-                    minutes = minutes,
-                    seconds = seconds,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                )
-            }
-            item{
-                RelatedToSubjectSection(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
-                    relatedToSubject = "English",
-                    selectSubjectButtonClick = {
-                        isBottomSheetOpen = true
-                    }
-                )
-            }
-            item{
-                ButtonsSection(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
-                    startButtonClick = {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        item{
+            TimerSection(
+                hours = hours,
+                minutes = minutes,
+                seconds = seconds,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+            )
+        }
+        item{
+            RelatedToSubjectSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                relatedToSubject = state.relatedToSubject ?: "",
+                selectSubjectButtonClick = { isBottomSheetOpen = true },
+                seconds = seconds
+            )
+        }
+        item{
+            ButtonsSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                startButtonClick = {
+                    if(state.subjectId != null && state.relatedToSubject != null){
                         ServiceHelper.triggerForegroundService(
                             context = context,
                             action = if(currentTimerState == TimerState.STARTED){
                                 ACTION_SERVICE_STOP
                             }else ACTION_SERVICE_START
                         )
-                    },
-                    cancelButtonClick = {
-                        ServiceHelper.triggerForegroundService(
+                        timerService.subjectId.value = state.subjectId
+                    }else{
+                        onAction(SessionAction.NotifyToUpdateSubject)
+                    }
+                },
+                cancelButtonClick = {
+                    ServiceHelper.triggerForegroundService(
                         context = context,
                         action = ACTION_SERVICE_CANCEL
                     ) },
-                    finishButtonClick = {
-
-                    },
-                    timerState = currentTimerState,
-                    seconds = seconds
-                )
-            }
-            studySessionList(
-                sectionTitle = "STUDY SESSIONS HISTORY",
-                emptyListText = "You don't have any recent study sessions.\n " +
-                        "Start a study session to begin recording your progress.",
-                sessions = sessions,
-                onDeleteIconClick = { isDeleteDialogOpen = true }
+                finishButtonClick = {
+                    val duration = timerService.duration.toLong(DurationUnit.SECONDS)
+                    if(duration >= 36){
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = ACTION_SERVICE_CANCEL
+                        )
+                    }
+                    onAction(SessionAction.SaveSession(duration))
+                },
+                timerState = currentTimerState,
+                seconds = seconds
             )
         }
+        studySessionList(
+            sectionTitle = "STUDY SESSIONS HISTORY",
+            emptyListText = "You don't have any recent study sessions.\n " +
+                    "Start a study session to begin recording your progress.",
+            sessions = state.sessions,
+            onDeleteIconClick = { session ->
+                isDeleteDialogOpen = true
+                onAction(SessionAction.OnDeleteSessionButtonClick(session))
+            }
+        )
     }
+
 }
 
 @Composable
@@ -245,6 +265,7 @@ private fun TimerSection (
 private fun RelatedToSubjectSection(
     relatedToSubject: String,
     selectSubjectButtonClick: () -> Unit,
+    seconds: String,
     modifier: Modifier,
 ) {
     Column(
@@ -263,7 +284,10 @@ private fun RelatedToSubjectSection(
                 text = relatedToSubject,
                 style = MaterialTheme.typography.bodyLarge
             )
-            IconButton(onClick = selectSubjectButtonClick) {
+            IconButton(
+                onClick = selectSubjectButtonClick,
+                enabled = seconds == "00"
+            ) {
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = "Select Subject"

@@ -19,7 +19,7 @@ object ServiceHelper {
 //            MainActivity::class.java
 //        )
         val deepLinkIntent = Intent(context, MainActivity::class.java).apply {
-            data = "https://$DEEPLINK_DOMAIN".toUri()
+            data = "$DEEPLINK_DOMAIN://dashboard/session".toUri()
         }
         return TaskStackBuilder.create(context).run {
             addNextIntentWithParentStack(deepLinkIntent)

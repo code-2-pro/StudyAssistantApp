@@ -8,6 +8,7 @@ sealed interface SubjectAction {
     object UpdateSubject: SubjectAction
     object DeleteSubject: SubjectAction
     object DeleteSession: SubjectAction
+    object UpdateProgress : SubjectAction
     data class OnCancelSubjectChanges(
         val previousName: String,
         val previousGoalStudyHours: String,

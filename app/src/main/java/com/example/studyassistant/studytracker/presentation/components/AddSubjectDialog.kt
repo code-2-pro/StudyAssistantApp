@@ -93,9 +93,9 @@ fun AddSubjectDialog(
                                     .clip(CircleShape)
                                     .border(
                                         width = 1.dp,
-                                        color = if (colors == selectedColors) {
-                                            Color.Black
-                                        } else Color.Transparent
+                                        color = if (colors == selectedColors) Color.Black
+                                        else Color.Transparent,
+                                        shape = CircleShape
                                     )
                                     .background(brush = Brush.verticalGradient(colors))
                                     .clickable { onColorChange(colors) }
