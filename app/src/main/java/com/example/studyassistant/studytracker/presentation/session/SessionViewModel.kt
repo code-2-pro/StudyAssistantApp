@@ -1,6 +1,7 @@
 package com.example.studyassistant.studytracker.presentation.session
 
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studyassistant.core.presentation.util.SnackbarController
@@ -39,6 +40,21 @@ class SessionViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
         initialValue = SessionState()
     )
+
+    val visiblePermissionDialogQueue = mutableStateListOf<String>()
+
+    fun dismissDialog() {
+        visiblePermissionDialogQueue.removeAt(0)
+    }
+
+    fun onPermissionResult(
+        permission: String,
+        isGranted: Boolean
+    ) {
+        if(!isGranted && !visiblePermissionDialogQueue.contains(permission)) {
+            visiblePermissionDialogQueue.add(permission)
+        }
+    }
 
     fun onAction(action: SessionAction){
         when(action){

@@ -3,16 +3,24 @@
 package com.example.studyassistant
 
 import android.Manifest
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,12 +43,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavDeepLink
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -51,11 +57,10 @@ import com.example.studyassistant.core.navigation.Route.DashboardScreen
 import com.example.studyassistant.core.navigation.Route.SessionScreen
 import com.example.studyassistant.core.navigation.Route.SubjectScreen
 import com.example.studyassistant.core.navigation.Route.TaskScreen
+import com.example.studyassistant.core.presentation.components.PermissionDialog
+import com.example.studyassistant.core.presentation.components.PostNotificationPermissionTextProvider
 import com.example.studyassistant.core.presentation.util.ObserveAsEvents
 import com.example.studyassistant.core.presentation.util.SnackbarController
-import com.example.studyassistant.studytracker.domain.model.Session
-import com.example.studyassistant.studytracker.domain.model.Subject
-import com.example.studyassistant.studytracker.domain.model.Task
 import com.example.studyassistant.studytracker.presentation.dashboard.DashboardScreen
 import com.example.studyassistant.studytracker.presentation.dashboard.DashboardScreenTopBar
 import com.example.studyassistant.studytracker.presentation.dashboard.DashboardViewModel
@@ -82,6 +87,12 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var navigator: Navigator
+
+    private val permissionsToRequest = arrayOf(
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+            Manifest.permission.POST_NOTIFICATIONS
+        }else ""
+    )
 
     private var isBound by mutableStateOf(false)
     private lateinit var timerService: StudySessionTimerService
@@ -111,14 +122,27 @@ class MainActivity : ComponentActivity() {
         setContent {
             if(isBound){
                 StudyAssistantTheme {
+                    var isPostNotificationPermissionGranted = remember {
+                        mutableStateOf <Boolean> (
+                            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                isPermissionGranted(
+                                    context = this@MainActivity,
+                                    permission = Manifest.permission.POST_NOTIFICATIONS
+                                )
+                            } else true
+                        )
+                    }
+
                     var topBarContent by remember {
                         mutableStateOf <@Composable () -> Unit> ({ })
                     }
                     // Workaround to set null for FAB
                     var fabContent by remember {
-                        mutableStateOf <@Composable (() -> Unit)> ({ })
+                        mutableStateOf <@Composable () -> Unit> ({ })
                     }
-                    var scaffoldModifier by remember { mutableStateOf<Modifier> (Modifier) }
+                    var scaffoldModifier by remember {
+                        mutableStateOf<Modifier>(Modifier)
+                    }
 
                     val snackbarHostState = remember { SnackbarHostState() }
                     val scope = rememberCoroutineScope()
@@ -128,12 +152,10 @@ class MainActivity : ComponentActivity() {
                     ) { event ->
                         scope.launch {
                             snackbarHostState.currentSnackbarData?.dismiss()
-
                             val result = snackbarHostState.showSnackbar(
                                 message = event.message,
                                 actionLabel = event.action?.name,
                             )
-
                             if(result == SnackbarResult.ActionPerformed) {
                                 event.action?.action?.invoke()
                             }
@@ -161,10 +183,14 @@ class MainActivity : ComponentActivity() {
 
                         NavHost(
                             navController = navController,
-
                             startDestination = navigator.startDestination,
+                            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(700)) },
+                            exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(700)) },
+                            popEnterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(700)) },
+                            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(700)) },
                             modifier = Modifier.padding(innerPadding)
                         ) {
+
                             composable<DashboardScreen> {
                                 val viewModel: DashboardViewModel = hiltViewModel()
                                 val state by viewModel.state.collectAsStateWithLifecycle()
@@ -173,7 +199,7 @@ class MainActivity : ComponentActivity() {
 
                                 topBarContent = { DashboardScreenTopBar() }
                                 fabContent = { }
-                                scaffoldModifier = Modifier
+                                scaffoldModifier = (Modifier)
 
                                 DashboardScreen(
                                     state = state,
@@ -199,13 +225,13 @@ class MainActivity : ComponentActivity() {
                             composable<SubjectScreen> {
                                 val viewModel: SubjectViewModel = hiltViewModel()
                                 val state by viewModel.state.collectAsStateWithLifecycle()
-                                val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
                                 var isEditSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
                                 var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
                                 val listState = rememberLazyListState()
                                 // Manage the FAB state in the parent
                                 var isFABExpanded by remember { mutableStateOf(true) }
-
+                                val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
                                 topBarContent = {
                                     SubjectScreenTopBar(
                                         title = state.subjectName,
@@ -221,7 +247,8 @@ class MainActivity : ComponentActivity() {
                                             navController.navigate(
                                                 TaskScreen(
                                                     taskId = null,
-                                                    subjectId = state.currentSubjectId)
+                                                    subjectId = state.currentSubjectId
+                                                )
                                             )
                                         },
                                         icon = { Icon(Icons.Default.Add, contentDescription = "Add Task") },
@@ -229,8 +256,7 @@ class MainActivity : ComponentActivity() {
                                         expanded = isFABExpanded
                                     )
                                 }
-                                scaffoldModifier = Modifier
-                                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                                scaffoldModifier = (Modifier.nestedScroll(scrollBehavior.nestedScrollConnection))
 
                                 SubjectScreen(
                                     state = state,
@@ -255,7 +281,9 @@ class MainActivity : ComponentActivity() {
                             composable<TaskScreen> {
                                 val viewModel: TaskViewModel = hiltViewModel()
                                 val state by viewModel.state.collectAsStateWithLifecycle()
+
                                 var isDeleteDialogOpen by rememberSaveable { mutableStateOf(false) }
+
                                 topBarContent = {
                                     TaskScreenTopBar(
                                         isTaskExist = state.currentTaskId != null,
@@ -263,11 +291,11 @@ class MainActivity : ComponentActivity() {
                                         checkBoxBorderColor = state.priority.color,
                                         onBackButtonClick = { navController.navigateUp() },
                                         onDeleteButtonClick = { isDeleteDialogOpen = true },
-                                        onCheckBoxClick = { viewModel.onAction(TaskAction.OnIsCompleteChange) }
+                                        onCheckBoxClick = { viewModel.onAction(TaskAction.OnIsCompleteChange)}
                                     )
                                 }
                                 fabContent = { }
-                                scaffoldModifier = Modifier
+                                scaffoldModifier = (Modifier)
                                 TaskScreen(
                                     state = state,
                                     isDeleteDialogOpen = isDeleteDialogOpen,
@@ -284,18 +312,65 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 val viewModel: SessionViewModel = hiltViewModel()
                                 val state by viewModel.state.collectAsStateWithLifecycle()
+                                val dialogQueue = viewModel.visiblePermissionDialogQueue
 
+                                val multiplePermissionResultLauncher = rememberLauncherForActivityResult(
+                                    contract = ActivityResultContracts.RequestMultiplePermissions(),
+                                    onResult = { perms ->
+                                        permissionsToRequest.forEach { permission ->
+                                            viewModel.onPermissionResult(
+                                                permission = permission,
+                                                isGranted = perms[permission] == true
+                                            )
+                                        }
+                                    }
+                                )
+
+                                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+                                    dialogQueue
+                                        .reversed()
+                                        .forEach { permission ->
+                                            PermissionDialog(
+                                                permissionTextProvider = when (permission) {
+                                                    Manifest.permission.POST_NOTIFICATIONS -> {
+                                                        PostNotificationPermissionTextProvider()
+                                                    }
+                                                    else -> return@forEach
+                                                },
+                                                isPermanentlyDeclined =
+                                                !shouldShowRequestPermissionRationale(permission),
+                                                onDismiss = viewModel::dismissDialog,
+                                                onOkClick = {
+                                                    viewModel.dismissDialog()
+                                                    multiplePermissionResultLauncher.launch(
+                                                        arrayOf(permission)
+                                                    )
+                                                },
+                                                onGoToAppSettingsClick = ::openAppSettings
+                                            )
+                                        }
+                                }
                                 topBarContent = {
                                     SessionScreenTopBar(
                                         onBackButtonClicked = { navController.navigateUp() }
                                     )
                                 }
                                 fabContent = { }
-                                scaffoldModifier = Modifier
+                                scaffoldModifier = (Modifier)
+
                                 SessionScreen(
                                     state = state,
-                                    onAction = viewModel::onAction,
-                                    timerService = timerService,
+                                    isPostNotificationGranted = isPostNotificationPermissionGranted.value,
+                                    onAction =  viewModel::onAction,
+                                    onPermissionTimerClick = {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                                            && !isPostNotificationPermissionGranted.value) {
+                                            multiplePermissionResultLauncher.launch(
+                                                arrayOf(Manifest.permission.POST_NOTIFICATIONS)
+                                            )
+                                        }
+                                    },
+                                    timerService = timerService
                                 )
                             }
                         }
@@ -303,22 +378,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        requestPermission()
     }
 
-    private fun requestPermission(){
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                0
-            )
-        }
-    }
+
 
     override fun onStop() {
         super.onStop()
         unbindService(connection)
         isBound = false
     }
+}
+
+fun Activity.openAppSettings() {
+    Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", packageName, null)
+    ).also(::startActivity)
+}
+
+fun isPermissionGranted(context: Context, permission: String): Boolean {
+    return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 }

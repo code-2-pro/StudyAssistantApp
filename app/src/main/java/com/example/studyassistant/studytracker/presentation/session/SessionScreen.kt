@@ -31,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -62,7 +61,9 @@ import kotlin.time.DurationUnit
 @Composable
 fun SessionScreen(
     state: SessionState,
+    isPostNotificationGranted: Boolean,
     onAction: (SessionAction) -> Unit,
+    onPermissionTimerClick: () -> Unit,
     timerService: StudySessionTimerService
 ) {
 
@@ -142,16 +143,20 @@ fun SessionScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp),
                 startButtonClick = {
-                    if(state.subjectId != null && state.relatedToSubject != null){
-                        ServiceHelper.triggerForegroundService(
-                            context = context,
-                            action = if(currentTimerState == TimerState.STARTED){
-                                ACTION_SERVICE_STOP
-                            }else ACTION_SERVICE_START
-                        )
-                        timerService.subjectId.value = state.subjectId
+                    if(isPostNotificationGranted){
+                        if(state.subjectId != null && state.relatedToSubject != null){
+                            ServiceHelper.triggerForegroundService(
+                                context = context,
+                                action = if(currentTimerState == TimerState.STARTED){
+                                    ACTION_SERVICE_STOP
+                                }else ACTION_SERVICE_START
+                            )
+                            timerService.subjectId.value = state.subjectId
+                        }else{
+                            onAction(SessionAction.NotifyToUpdateSubject)
+                        }
                     }else{
-                        onAction(SessionAction.NotifyToUpdateSubject)
+                        onPermissionTimerClick()
                     }
                 },
                 cancelButtonClick = {
