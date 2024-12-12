@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "104938037690",
+    "project_id": "studyassistant-firebase",
+    "storage_bucket": "studyassistant-firebase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:104938037690:android:3461c809e5ff36d72efd83",
+        "android_client_info": {
+          "package_name": "com.example.studyassistant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAw0U5_hyEf04kpB3sdSmtdq_iUbr8boRs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

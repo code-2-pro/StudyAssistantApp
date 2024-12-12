@@ -15,35 +15,25 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,31 +41,24 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navDeepLink
+import androidx.navigation.navigation
 import com.example.studyassistant.core.navigation.NavigationAction
 import com.example.studyassistant.core.navigation.Navigator
-import com.example.studyassistant.core.navigation.Route.DashboardScreen
-import com.example.studyassistant.core.navigation.Route.SessionScreen
-import com.example.studyassistant.core.navigation.Route.SubjectScreen
-import com.example.studyassistant.core.navigation.Route.TaskScreen
-import com.example.studyassistant.core.presentation.components.PermissionDialog
-import com.example.studyassistant.core.presentation.components.PostNotificationPermissionTextProvider
+import com.example.studyassistant.core.navigation.Route
+import com.example.studyassistant.core.presentation.ScaffoldComponentState
 import com.example.studyassistant.core.presentation.util.ObserveAsEvents
 import com.example.studyassistant.core.presentation.util.SnackbarController
-import com.example.studyassistant.studytracker.presentation.dashboard.DashboardScreen
-import com.example.studyassistant.studytracker.presentation.dashboard.DashboardScreenTopBar
-import com.example.studyassistant.studytracker.presentation.dashboard.DashboardViewModel
-import com.example.studyassistant.studytracker.presentation.session.SessionScreen
-import com.example.studyassistant.studytracker.presentation.session.SessionScreenTopBar
-import com.example.studyassistant.studytracker.presentation.session.SessionViewModel
-import com.example.studyassistant.studytracker.presentation.session.StudySessionTimerService
-import com.example.studyassistant.studytracker.presentation.subject.SubjectScreen
-import com.example.studyassistant.studytracker.presentation.subject.SubjectScreenTopBar
-import com.example.studyassistant.studytracker.presentation.subject.SubjectViewModel
-import com.example.studyassistant.studytracker.presentation.task.TaskAction
-import com.example.studyassistant.studytracker.presentation.task.TaskScreen
-import com.example.studyassistant.studytracker.presentation.task.TaskScreenTopBar
-import com.example.studyassistant.studytracker.presentation.task.TaskViewModel
-import com.example.studyassistant.studytracker.presentation.util.Constants.DEEPLINK_DOMAIN
+import com.example.studyassistant.feature.authentication.presentation.AuthViewModel
+import com.example.studyassistant.feature.studytracker.presentation.session.StudySessionTimerService
+import com.example.studyassistant.feature.studytracker.presentation.util.Constants.DEEPLINK_DOMAIN
+import com.example.studyassistant.navigation.graph.authentication.route.LoginRoute
+import com.example.studyassistant.navigation.graph.authentication.route.MainSettingRoute
+import com.example.studyassistant.navigation.graph.authentication.route.RegisterRoute
+import com.example.studyassistant.navigation.graph.flashcard.route.FlashcardRoute
+import com.example.studyassistant.navigation.graph.studytracker.route.DashboardRoute
+import com.example.studyassistant.navigation.graph.studytracker.route.SessionRoute
+import com.example.studyassistant.navigation.graph.studytracker.route.SubjectRoute
+import com.example.studyassistant.navigation.graph.studytracker.route.TaskRoute
 import com.example.studyassistant.ui.theme.StudyAssistantTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -88,11 +71,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var navigator: Navigator
 
-    private val permissionsToRequest = arrayOf(
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+    private val permissionsToRequest = listOfNotNull(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.POST_NOTIFICATIONS
-        }else ""
-    )
+        }
+        else null
+    ).toTypedArray()
 
     private var isBound by mutableStateOf(false)
     private lateinit var timerService: StudySessionTimerService
@@ -120,8 +104,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            if(isBound){
+//            if(isBound){
                 StudyAssistantTheme {
+                    val authViewModel: AuthViewModel = hiltViewModel()
+                    val authState by authViewModel.state.collectAsStateWithLifecycle()
+
                     var isPostNotificationPermissionGranted = remember {
                         mutableStateOf <Boolean> (
                             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -133,16 +120,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    var topBarContent by remember {
-                        mutableStateOf <@Composable () -> Unit> ({ })
-                    }
-                    // Workaround to set null for FAB
-                    var fabContent by remember {
-                        mutableStateOf <@Composable () -> Unit> ({ })
-                    }
-                    var scaffoldModifier by remember {
-                        mutableStateOf<Modifier>(Modifier)
-                    }
+                    var scaffoldComponentState by remember { mutableStateOf(ScaffoldComponentState()) }
 
                     val snackbarHostState = remember { SnackbarHostState() }
                     val scope = rememberCoroutineScope()
@@ -161,15 +139,18 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-
+                    
+                    var selectedItemIndex by rememberSaveable {
+                        mutableIntStateOf(0)
+                    }
+                    val navController = rememberNavController()
                     Scaffold(
                         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-                        modifier = scaffoldModifier.fillMaxSize(),
-                        topBar =  topBarContent,
-                        floatingActionButton = fabContent,
+                        modifier = scaffoldComponentState.scaffoldModifier.fillMaxSize(),
+                        topBar =  scaffoldComponentState.topBarContent,
+                        floatingActionButton = scaffoldComponentState.fabContent,
+                        bottomBar = scaffoldComponentState.bottomBarContent
                     ) { innerPadding ->
-                        val navController = rememberNavController()
-
                         ObserveAsEvents(events = navigator.navigationActions) { action ->
                             when(action) {
                                 is NavigationAction.Navigate -> navController.navigate(
@@ -180,7 +161,6 @@ class MainActivity : ComponentActivity() {
                                 NavigationAction.NavigateUp -> navController.navigateUp()
                             }
                         }
-
                         NavHost(
                             navController = navController,
                             startDestination = navigator.startDestination,
@@ -190,200 +170,99 @@ class MainActivity : ComponentActivity() {
                             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(700)) },
                             modifier = Modifier.padding(innerPadding)
                         ) {
-
-                            composable<DashboardScreen> {
-                                val viewModel: DashboardViewModel = hiltViewModel()
-                                val state by viewModel.state.collectAsStateWithLifecycle()
-                                val tasks by viewModel.tasks.collectAsStateWithLifecycle()
-                                val recentSessions by viewModel.recentSessions.collectAsStateWithLifecycle()
-
-                                topBarContent = { DashboardScreenTopBar() }
-                                fabContent = { }
-                                scaffoldModifier = (Modifier)
-
-                                DashboardScreen(
-                                    state = state,
-                                    tasks = tasks,
-                                    recentSessions = recentSessions,
-                                    onAction = viewModel::onAction,
-                                    onSubjectCardClick = { subjectId ->
-                                        subjectId?.let {
-                                            navController.navigate(SubjectScreen(subjectId = subjectId))
-                                        }
-                                    },
-                                    onTaskCardClick = { taskId ->
-                                        navController.navigate(TaskScreen(
-                                            taskId = taskId,
-                                            subjectId = null
-                                        ))
-                                    },
-                                    onStartSessionButtonClick = {
-                                        navController.navigate(SessionScreen)
-                                    },
-                                )
-                            }
-                            composable<SubjectScreen> {
-                                val viewModel: SubjectViewModel = hiltViewModel()
-                                val state by viewModel.state.collectAsStateWithLifecycle()
-
-                                var isEditSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
-                                var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
-                                val listState = rememberLazyListState()
-                                // Manage the FAB state in the parent
-                                var isFABExpanded by remember { mutableStateOf(true) }
-                                val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-                                topBarContent = {
-                                    SubjectScreenTopBar(
-                                        title = state.subjectName,
-                                        onBackButtonClick = { navController.navigateUp() },
-                                        onDeleteButtonClick = { isDeleteSubjectDialogOpen = true },
-                                        onEditButtonClick = { isEditSubjectDialogOpen = true },
-                                        scrollBehavior = scrollBehavior,
+                            navigation<Route.Authentication>(startDestination = Route.LoginScreen){
+                                composable<Route.LoginScreen>{
+                                    LoginRoute(
+                                        state = authState,
+                                        events = authViewModel.events,
+                                        onAction = authViewModel::onAction,
+                                        updateScaffold = {scaffoldComponentState = it}
                                     )
                                 }
-                                fabContent = {
-                                    ExtendedFloatingActionButton(
-                                        onClick = {
-                                            navController.navigate(
-                                                TaskScreen(
-                                                    taskId = null,
-                                                    subjectId = state.currentSubjectId
-                                                )
-                                            )
+                                composable<Route.RegisterScreen>{
+                                    RegisterRoute(
+                                        state = authState,
+                                        events = authViewModel.events,
+                                        onAction = authViewModel::onAction,
+                                        updateScaffold = {scaffoldComponentState = it}
+                                    )
+                                }
+                            }
+                            navigation<Route.StudyTracker>(startDestination = Route.DashboardScreen) {
+                                composable<Route.DashboardScreen> {
+                                    DashboardRoute(
+                                        selectedItemIndex = selectedItemIndex,
+                                        onSelectedItemIndexChange = { selectedItemIndex = it },
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
+                                    )
+                                }
+                                composable<Route.SubjectScreen> {
+                                    SubjectRoute(
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        subjectIdOnTimerService = timerService.subjectId.value,
+                                        navController = navController
+                                    )
+                                }
+                                composable<Route.TaskScreen> {
+                                    TaskRoute(
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
+                                    )
+                                }
+                                composable<Route.SessionScreen>(
+                                    deepLinks = listOf(
+                                        navDeepLink {
+                                            uriPattern = "$DEEPLINK_DOMAIN://dashboard/session"
+                                        }
+                                    )
+                                ) {
+                                    SessionRoute(
+                                        permissionsToRequest = permissionsToRequest,
+                                        isPostNotificationPermissionGranted =
+                                        isPostNotificationPermissionGranted.value,
+                                        onPostNotificationPermissionGranted = {
+                                            isPostNotificationPermissionGranted.value = it
                                         },
-                                        icon = { Icon(Icons.Default.Add, contentDescription = "Add Task") },
-                                        text = { Text("Add Task") },
-                                        expanded = isFABExpanded
+                                        onGoToAppSettingsClick = ::openAppSettings,
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController,
+                                        timerService = timerService
                                     )
                                 }
-                                scaffoldModifier = (Modifier.nestedScroll(scrollBehavior.nestedScrollConnection))
-
-                                SubjectScreen(
-                                    state = state,
-                                    listState = listState,
-                                    onListScrolled = { firstVisibleItemIndex ->
-                                        isFABExpanded = firstVisibleItemIndex == 0
-                                    },
-                                    isEditSubjectDialogOpen = isEditSubjectDialogOpen,
-                                    isDeleteSubjectDialogOpen = isDeleteSubjectDialogOpen,
-                                    onEditSubjectDialogVisibleChange = { isEditSubjectDialogOpen = it },
-                                    onDeleteSubjectDialogVisibleChange = { isDeleteSubjectDialogOpen = it },
-                                    onAction = viewModel::onAction,
-                                    onDeleteButtonClick = { navController.navigateUp() },
-                                    onTaskCardClick = { taskId ->
-                                        navController.navigate(TaskScreen(
-                                            taskId = taskId,
-                                            subjectId = null
-                                        ))
-                                    }
-                                )
                             }
-                            composable<TaskScreen> {
-                                val viewModel: TaskViewModel = hiltViewModel()
-                                val state by viewModel.state.collectAsStateWithLifecycle()
-
-                                var isDeleteDialogOpen by rememberSaveable { mutableStateOf(false) }
-
-                                topBarContent = {
-                                    TaskScreenTopBar(
-                                        isTaskExist = state.currentTaskId != null,
-                                        isComplete = state.isTaskComplete,
-                                        checkBoxBorderColor = state.priority.color,
-                                        onBackButtonClick = { navController.navigateUp() },
-                                        onDeleteButtonClick = { isDeleteDialogOpen = true },
-                                        onCheckBoxClick = { viewModel.onAction(TaskAction.OnIsCompleteChange)}
+                            navigation<Route.Flashcard>(startDestination = Route.FlashcardScreen){
+                                composable<Route.FlashcardScreen> {
+                                    FlashcardRoute(
+                                        selectedItemIndex = selectedItemIndex,
+                                        onSelectedItemIndexChange = { selectedItemIndex = it },
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
                                     )
                                 }
-                                fabContent = { }
-                                scaffoldModifier = (Modifier)
-                                TaskScreen(
-                                    state = state,
-                                    isDeleteDialogOpen = isDeleteDialogOpen,
-                                    onDeleteDialogVisibleChange = { isDeleteDialogOpen = it },
-                                    onAction = viewModel::onAction
-                                )
                             }
-                            composable<SessionScreen>(
-                                deepLinks = listOf(
-                                    navDeepLink {
-                                        uriPattern = "$DEEPLINK_DOMAIN://dashboard/session"
-                                    }
-                                )
-                            ) {
-                                val viewModel: SessionViewModel = hiltViewModel()
-                                val state by viewModel.state.collectAsStateWithLifecycle()
-                                val dialogQueue = viewModel.visiblePermissionDialogQueue
-
-                                val multiplePermissionResultLauncher = rememberLauncherForActivityResult(
-                                    contract = ActivityResultContracts.RequestMultiplePermissions(),
-                                    onResult = { perms ->
-                                        permissionsToRequest.forEach { permission ->
-                                            viewModel.onPermissionResult(
-                                                permission = permission,
-                                                isGranted = perms[permission] == true
-                                            )
-                                        }
-                                    }
-                                )
-
-                                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
-                                    dialogQueue
-                                        .reversed()
-                                        .forEach { permission ->
-                                            PermissionDialog(
-                                                permissionTextProvider = when (permission) {
-                                                    Manifest.permission.POST_NOTIFICATIONS -> {
-                                                        PostNotificationPermissionTextProvider()
-                                                    }
-                                                    else -> return@forEach
-                                                },
-                                                isPermanentlyDeclined =
-                                                !shouldShowRequestPermissionRationale(permission),
-                                                onDismiss = viewModel::dismissDialog,
-                                                onOkClick = {
-                                                    viewModel.dismissDialog()
-                                                    multiplePermissionResultLauncher.launch(
-                                                        arrayOf(permission)
-                                                    )
-                                                },
-                                                onGoToAppSettingsClick = ::openAppSettings
-                                            )
-                                        }
-                                }
-                                topBarContent = {
-                                    SessionScreenTopBar(
-                                        onBackButtonClicked = { navController.navigateUp() }
+                            navigation<Route.Setting>(startDestination = Route.MainSetting){
+                                composable<Route.MainSetting>{
+                                    MainSettingRoute(
+                                        selectedItemIndex = selectedItemIndex,
+                                        onSelectedItemIndexChange = { selectedItemIndex = it },
+                                        state = authState,
+                                        onAction = authViewModel::onAction,
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
                                     )
                                 }
-                                fabContent = { }
-                                scaffoldModifier = (Modifier)
-
-                                SessionScreen(
-                                    state = state,
-                                    isPostNotificationGranted = isPostNotificationPermissionGranted.value,
-                                    onAction =  viewModel::onAction,
-                                    onPermissionTimerClick = {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                                            && !isPostNotificationPermissionGranted.value) {
-                                            multiplePermissionResultLauncher.launch(
-                                                arrayOf(Manifest.permission.POST_NOTIFICATIONS)
-                                            )
-                                        }
-                                    },
-                                    timerService = timerService
-                                )
                             }
                         }
                     }
                 }
-            }
+//            }
         }
     }
 
 
-
-    override fun onStop() {
-        super.onStop()
+    override fun onDestroy() {
+        super.onDestroy()
         unbindService(connection)
         isBound = false
     }
@@ -399,3 +278,4 @@ fun Activity.openAppSettings() {
 fun isPermissionGranted(context: Context, permission: String): Boolean {
     return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 }
+

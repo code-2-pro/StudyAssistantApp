@@ -10,4 +10,14 @@
     <string name="error_task_title_is_blank">Task title is blank.</string>
     <string name="error_task_title_too_short">Task title is too short.</string>
     <string name="error_task_title_too_long">Task title is too long.</string>
+    <string name="error_email_is_blank">Email is blank.</string>
+    <string name="error_password_is_blank">Password is blank.</string>
+    <string name="error_invalid_email">Please enter a valid email address.</string>
+    <string name="error_weak_password">Please use password at least 6 characters long.</string>
+    <string name="error_email_is_exist">This email is already registered. Please use a different email.</string>
+    <string name="error_invalid_login_credentials">Your login info is invalid. Please try again.</string>
+    <string name="error_user_not_found">No account found with this email. Please register or try again.</string>
+    <string name="error_network_error">Couldn\'t connect to server, please check your internet connection.\n</string>
+    <string name="error_unknown">Something went wrong. Please try again later.</string>
+    <string name="error_too_many_request">Oops, it seems like your quota is exceeded.</string>
 </resources>

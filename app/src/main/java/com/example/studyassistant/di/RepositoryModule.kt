@@ -1,11 +1,15 @@
 package com.example.studyassistant.di
 
-import com.example.studyassistant.studytracker.data.repository.SessionRepositoryImpl
-import com.example.studyassistant.studytracker.data.repository.SubjectRepositoryImpl
-import com.example.studyassistant.studytracker.data.repository.TaskRepositoryImpl
-import com.example.studyassistant.studytracker.domain.repository.SessionRepository
-import com.example.studyassistant.studytracker.domain.repository.SubjectRepository
-import com.example.studyassistant.studytracker.domain.repository.TaskRepository
+import com.example.studyassistant.feature.authentication.data.repository.AuthRepositoryImpl
+import com.example.studyassistant.feature.authentication.domain.repository.AuthRepository
+import com.example.studyassistant.feature.flashcard.data.FlashcardRepositoryImpl
+import com.example.studyassistant.feature.flashcard.domain.repository.FlashcardRepository
+import com.example.studyassistant.feature.studytracker.data.repository.SessionRepositoryImpl
+import com.example.studyassistant.feature.studytracker.data.repository.SubjectRepositoryImpl
+import com.example.studyassistant.feature.studytracker.data.repository.TaskRepositoryImpl
+import com.example.studyassistant.feature.studytracker.domain.repository.SessionRepository
+import com.example.studyassistant.feature.studytracker.domain.repository.SubjectRepository
+import com.example.studyassistant.feature.studytracker.domain.repository.TaskRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -33,6 +37,18 @@ abstract class RepositoryModule {
     abstract fun bindSessionRepository(
         sessionRepositoryImpl: SessionRepositoryImpl
     ): SessionRepository
+
+    @Singleton
+    @Binds
+    abstract fun bindFlashcardRepository(
+        flashcardRepositoryImpl: FlashcardRepositoryImpl
+    ): FlashcardRepository
+
+    @Singleton
+    @Binds
+    abstract fun bindAuthRepository(
+        authRepositoryImpl: AuthRepositoryImpl
+    ): AuthRepository
 
 
 }

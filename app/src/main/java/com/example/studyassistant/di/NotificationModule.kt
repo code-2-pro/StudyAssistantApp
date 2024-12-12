@@ -4,8 +4,8 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import com.example.studyassistant.R
-import com.example.studyassistant.studytracker.presentation.session.ServiceHelper
-import com.example.studyassistant.studytracker.presentation.util.Constants.NOTIFICATION_CHANNEL_ID
+import com.example.studyassistant.feature.studytracker.presentation.session.ServiceHelper
+import com.example.studyassistant.feature.studytracker.presentation.util.Constants.NOTIFICATION_CHANNEL_ID
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

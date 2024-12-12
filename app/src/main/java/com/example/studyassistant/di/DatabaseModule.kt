@@ -3,9 +3,10 @@ package com.example.studyassistant.di
 import android.app.Application
 import androidx.room.Room
 import com.example.studyassistant.core.data.local.AppDatabase
-import com.example.studyassistant.studytracker.data.local.dao.SessionDao
-import com.example.studyassistant.studytracker.data.local.dao.SubjectDao
-import com.example.studyassistant.studytracker.data.local.dao.TaskDao
+import com.example.studyassistant.feature.flashcard.data.FlashcardDao
+import com.example.studyassistant.feature.studytracker.data.local.dao.SessionDao
+import com.example.studyassistant.feature.studytracker.data.local.dao.SubjectDao
+import com.example.studyassistant.feature.studytracker.data.local.dao.TaskDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,6 +29,8 @@ object DatabaseModule {
                 AppDatabase::class.java,
                 "studyassistant.db"
             )
+            .addMigrations(AppDatabase.migration1To2)
+            .addMigrations(AppDatabase.migration2To3)
             .build()
     }
 
@@ -49,4 +52,9 @@ object DatabaseModule {
         return database.sessionDao()
     }
 
+    @Provides
+    @Singleton
+    fun provideFlashcardDao(database: AppDatabase): FlashcardDao{
+        return database.flashcardDao()
+    }
 }
