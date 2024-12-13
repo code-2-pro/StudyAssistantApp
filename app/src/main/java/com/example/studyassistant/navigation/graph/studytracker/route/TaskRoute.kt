@@ -42,7 +42,6 @@ fun NavGraphBuilder.TaskRoute(
                 )
             },
             fabContent = { },
-            bottomBarContent = {},
             scaffoldModifier = Modifier
         ))
     }

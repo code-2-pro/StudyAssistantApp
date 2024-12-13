@@ -75,7 +75,6 @@ fun NavGraphBuilder.SubjectRoute(
                         expanded = isFABExpanded
                     )
                 },
-                bottomBarContent = {},
                 scaffoldModifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
             )
         )

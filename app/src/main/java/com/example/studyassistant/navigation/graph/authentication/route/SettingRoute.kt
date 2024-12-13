@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import com.example.studyassistant.core.presentation.ScaffoldComponentState
-import com.example.studyassistant.core.presentation.components.BottomBarNavigation
 import com.example.studyassistant.feature.authentication.presentation.AuthAction
 import com.example.studyassistant.feature.authentication.presentation.AuthState
 import com.example.studyassistant.feature.authentication.presentation.setting.SettingsScreen
@@ -20,8 +19,7 @@ import com.example.studyassistant.feature.authentication.presentation.setting.co
 
 @Composable
 fun NavGraphBuilder.MainSettingRoute(
-    selectedItemIndex: Int,
-    onSelectedItemIndexChange :(Int) -> Unit,
+    onLogoutClick :() -> Unit,
     state: AuthState,
     onAction:(AuthAction) -> Unit,
     updateScaffold: (ScaffoldComponentState) -> Unit,
@@ -48,19 +46,14 @@ fun NavGraphBuilder.MainSettingRoute(
                 )
             },
             fabContent = { },
-            bottomBarContent = {
-                BottomBarNavigation(
-                    selectedItemIndex = selectedItemIndex,
-                    onSelectedItemIndexChange = { onSelectedItemIndexChange(it) },
-                    navController = navController
-                )
-            },
             scaffoldModifier = Modifier
         ))
     }
 
     SettingsScreen(
+        onLogoutClick = onLogoutClick,
         onAction = onAction,
+        state = state,
         listState = listState
     )
 

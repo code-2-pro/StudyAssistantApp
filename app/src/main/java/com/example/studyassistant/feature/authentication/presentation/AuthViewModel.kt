@@ -94,10 +94,10 @@ class AuthViewModel @Inject constructor(
             AuthAction.OnUseNoAccountClick -> {
                 useNoAccount()
             }
-            AuthAction.OnKeepLocalDataClick -> {
+            AuthAction.OnLogoutKeepLocalDataClick -> {
                 logoutWithKeepLocalData()
             }
-            AuthAction.OnRemoveLocalDataClick -> {
+            AuthAction.OnLogoutRemoveLocalDataClick -> {
                 logoutWithRemoveLocalData()
             }
         }
@@ -111,7 +111,11 @@ class AuthViewModel @Inject constructor(
             ) }
             authRepository.logout()
             authRepository.removeAllLocalData()
-            navigator.navigate(Route.Authentication)
+            navigator.navigate(Route.Authentication){
+                popUpTo(0){ // Clears the entire back stack
+                    inclusive = true
+                }
+            }
             _state.update { it.copy(isLoading = false) }
         }
     }
@@ -123,7 +127,14 @@ class AuthViewModel @Inject constructor(
                 currentUser = null
             ) }
             authRepository.logout()
-            navigator.navigate(Route.Authentication)
+            navigator.navigate(
+                route =  Route.Authentication,
+                navOptions = {
+                    popUpTo(0){
+                        inclusive = true
+                    }
+                }
+            )
             _state.update { it.copy(isLoading = false) }
         }
     }
@@ -136,7 +147,7 @@ class AuthViewModel @Inject constructor(
                 route =  Route.StudyTracker,
                 navOptions = {
                     popUpTo(Route.Authentication) {
-                        inclusive = true
+                        inclusive = false
                     }
                 }
             )
@@ -213,9 +224,6 @@ class AuthViewModel @Inject constructor(
             if(state.value.isConnected){
                 authRepository.login(email, password)
                     .onSuccess {  user ->
-                        _state.update {
-                            it.copy(currentUser = user)
-                        }
                         authRepository.checkDataConsistency()
                             .onSuccess { changedMap ->
                                 _state.update { it.copy(isLoading = false) }
@@ -223,6 +231,7 @@ class AuthViewModel @Inject constructor(
                                 if(changedMap.isNotEmpty()){
                                     _events.send(AuthEvent.SyncChange(changedMap))
                                 }else{
+                                    _state.update { it.copy(currentUser = user) }
                                     navigator.navigate(
                                         route =  Route.StudyTracker,
                                         navOptions = {

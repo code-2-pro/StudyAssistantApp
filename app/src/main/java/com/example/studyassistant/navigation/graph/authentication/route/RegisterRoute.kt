@@ -13,7 +13,6 @@ import com.example.studyassistant.feature.authentication.presentation.AuthAction
 import com.example.studyassistant.feature.authentication.presentation.AuthEvent
 import com.example.studyassistant.feature.authentication.presentation.AuthState
 import com.example.studyassistant.feature.authentication.presentation.register.RegisterScreen
-import com.example.studyassistant.feature.studytracker.presentation.dashboard.DashboardScreenTopBar
 import kotlinx.coroutines.flow.Flow
 
 @Composable
@@ -26,7 +25,7 @@ fun NavGraphBuilder.RegisterRoute(
 ) {
     LaunchedEffect(key1 = true) {
         updateScaffold(ScaffoldComponentState(
-            topBarContent = { DashboardScreenTopBar() },
+            topBarContent = { },
             fabContent = { },
             scaffoldModifier = Modifier
         ))

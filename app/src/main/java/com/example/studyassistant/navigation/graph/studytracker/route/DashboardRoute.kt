@@ -12,15 +12,12 @@ import com.example.studyassistant.core.navigation.Route
 import com.example.studyassistant.core.navigation.Route.SubjectScreen
 import com.example.studyassistant.core.navigation.Route.TaskScreen
 import com.example.studyassistant.core.presentation.ScaffoldComponentState
-import com.example.studyassistant.core.presentation.components.BottomBarNavigation
 import com.example.studyassistant.feature.studytracker.presentation.dashboard.DashboardScreen
 import com.example.studyassistant.feature.studytracker.presentation.dashboard.DashboardScreenTopBar
 import com.example.studyassistant.feature.studytracker.presentation.dashboard.DashboardViewModel
 
 @Composable
 fun NavGraphBuilder.DashboardRoute(
-    selectedItemIndex: Int,
-    onSelectedItemIndexChange :(Int) -> Unit,
     updateScaffold: (ScaffoldComponentState) -> Unit,
     navController: NavController,
     modifier: Modifier = Modifier
@@ -34,13 +31,6 @@ fun NavGraphBuilder.DashboardRoute(
         updateScaffold(ScaffoldComponentState(
             topBarContent = { DashboardScreenTopBar() },
             fabContent = { },
-            bottomBarContent = {
-                BottomBarNavigation(
-                    selectedItemIndex = selectedItemIndex,
-                    onSelectedItemIndexChange = { onSelectedItemIndexChange(it) },
-                    navController = navController
-                )
-            },
             scaffoldModifier = Modifier
         ))
     }

@@ -40,6 +40,19 @@ sealed interface Route {
     @Serializable
     data object FlashcardScreen: Route
 
+    // Utility Graph
+    @Serializable
+    data object Utility: Route
+
+    @Serializable
+    data object UtilityScreen: Route
+
+    @Serializable
+    data object AssistantScreen: Route
+
+    @Serializable
+    data object DocumentAnalyzer: Route
+
     // Setting Graph
     @Serializable
     data object Setting: Route

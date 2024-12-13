@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -24,11 +26,18 @@ android {
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
-
     }
 
     sourceSets {
         getByName("androidTest").assets.srcDirs("$projectDir/schemas")
+    }
+
+    val localProperties = Properties()
+    val localPropertiesFile = File(rootDir,"secret.properties")
+    if(localPropertiesFile.exists() && localPropertiesFile.isFile){
+        localPropertiesFile.inputStream().use {
+            localProperties.load(it)
+        }
     }
 
     buildTypes {
@@ -38,6 +47,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            buildConfigField("String", "GEMINI_API_KEY", localProperties.getProperty("GEMINI_API_KEY"))
         }
     }
     compileOptions {
@@ -50,6 +62,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -101,4 +114,12 @@ dependencies {
 
     // Coroutines for Firebase
     implementation(libs.kotlinx.coroutines.play.services)
+
+    // ML Kit for Document Scanner
+    implementation (libs.play.services.mlkit.document.scanner)
+    implementation (libs.coil.compose)
+
+    // Gemini
+    implementation(libs.generativeai)
+
 }

@@ -9,15 +9,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import com.example.studyassistant.core.presentation.ScaffoldComponentState
-import com.example.studyassistant.core.presentation.components.BottomBarNavigation
 import com.example.studyassistant.feature.flashcard.presentation.FlashcardScreen
 import com.example.studyassistant.feature.flashcard.presentation.FlashcardViewModel
-import com.example.studyassistant.feature.studytracker.presentation.dashboard.DashboardScreenTopBar
+import com.example.studyassistant.feature.flashcard.presentation.components.FlashScreenTopBar
 
 @Composable
 fun NavGraphBuilder.FlashcardRoute(
-    selectedItemIndex: Int,
-    onSelectedItemIndexChange :(Int) -> Unit,
     updateScaffold: (ScaffoldComponentState) -> Unit,
     navController: NavController,
     modifier: Modifier = Modifier
@@ -27,15 +24,8 @@ fun NavGraphBuilder.FlashcardRoute(
 
     LaunchedEffect(key1 = true) {
         updateScaffold(ScaffoldComponentState(
-            topBarContent = { DashboardScreenTopBar() },
+            topBarContent = { FlashScreenTopBar() },
             fabContent = { },
-            bottomBarContent = {
-                BottomBarNavigation(
-                    selectedItemIndex = selectedItemIndex,
-                    onSelectedItemIndexChange = { onSelectedItemIndexChange(it) },
-                    navController = navController
-                )
-            },
             scaffoldModifier = Modifier
         ))
     }

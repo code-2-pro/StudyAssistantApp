@@ -10,8 +10,8 @@ sealed interface AuthAction {
         val password: String,
         val displayName: String
     ): AuthAction
-    object OnKeepLocalDataClick: AuthAction
-    object OnRemoveLocalDataClick: AuthAction
+    object OnLogoutKeepLocalDataClick: AuthAction
+    object OnLogoutRemoveLocalDataClick: AuthAction
     object OnToLoginPageClick: AuthAction
     object OnToRegisterPageClick: AuthAction
     object OnSendDataToRemoteClick: AuthAction

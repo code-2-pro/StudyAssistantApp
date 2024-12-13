@@ -46,6 +46,7 @@ import com.example.studyassistant.core.navigation.NavigationAction
 import com.example.studyassistant.core.navigation.Navigator
 import com.example.studyassistant.core.navigation.Route
 import com.example.studyassistant.core.presentation.ScaffoldComponentState
+import com.example.studyassistant.core.presentation.components.BottomBarNavigation
 import com.example.studyassistant.core.presentation.util.ObserveAsEvents
 import com.example.studyassistant.core.presentation.util.SnackbarController
 import com.example.studyassistant.feature.authentication.presentation.AuthViewModel
@@ -59,6 +60,8 @@ import com.example.studyassistant.navigation.graph.studytracker.route.DashboardR
 import com.example.studyassistant.navigation.graph.studytracker.route.SessionRoute
 import com.example.studyassistant.navigation.graph.studytracker.route.SubjectRoute
 import com.example.studyassistant.navigation.graph.studytracker.route.TaskRoute
+import com.example.studyassistant.navigation.graph.utillity.UtilityRoute
+import com.example.studyassistant.navigation.graph.utillity.route.AssistantRoute
 import com.example.studyassistant.ui.theme.StudyAssistantTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -149,14 +152,25 @@ class MainActivity : ComponentActivity() {
                         modifier = scaffoldComponentState.scaffoldModifier.fillMaxSize(),
                         topBar =  scaffoldComponentState.topBarContent,
                         floatingActionButton = scaffoldComponentState.fabContent,
-                        bottomBar = scaffoldComponentState.bottomBarContent
+                        bottomBar = {
+                            BottomBarNavigation(
+                                selectedItemIndex = selectedItemIndex,
+                                onSelectedItemIndexChange = { selectedItemIndex = it },
+                                navController = navController
+                            )
+                        }
                     ) { innerPadding ->
                         ObserveAsEvents(events = navigator.navigationActions) { action ->
+                            val currentDestination = navController.currentBackStackEntry?.destination?.route
                             when(action) {
-                                is NavigationAction.Navigate -> navController.navigate(
-                                    action.route
-                                ) {
-                                    action.navOptions(this)
+                                is NavigationAction.Navigate -> {
+                                    if (currentDestination != action.route.toString()) {
+                                        navController.navigate(
+                                            action.route
+                                        ) {
+                                            action.navOptions(this)
+                                        }
+                                    }else return@ObserveAsEvents
                                 }
                                 NavigationAction.NavigateUp -> navController.navigateUp()
                             }
@@ -191,8 +205,6 @@ class MainActivity : ComponentActivity() {
                             navigation<Route.StudyTracker>(startDestination = Route.DashboardScreen) {
                                 composable<Route.DashboardScreen> {
                                     DashboardRoute(
-                                        selectedItemIndex = selectedItemIndex,
-                                        onSelectedItemIndexChange = { selectedItemIndex = it },
                                         updateScaffold = { scaffoldComponentState = it },
                                         navController = navController
                                     )
@@ -234,8 +246,6 @@ class MainActivity : ComponentActivity() {
                             navigation<Route.Flashcard>(startDestination = Route.FlashcardScreen){
                                 composable<Route.FlashcardScreen> {
                                     FlashcardRoute(
-                                        selectedItemIndex = selectedItemIndex,
-                                        onSelectedItemIndexChange = { selectedItemIndex = it },
                                         updateScaffold = { scaffoldComponentState = it },
                                         navController = navController
                                     )
@@ -244,10 +254,23 @@ class MainActivity : ComponentActivity() {
                             navigation<Route.Setting>(startDestination = Route.MainSetting){
                                 composable<Route.MainSetting>{
                                     MainSettingRoute(
-                                        selectedItemIndex = selectedItemIndex,
-                                        onSelectedItemIndexChange = { selectedItemIndex = it },
                                         state = authState,
+                                        onLogoutClick = { selectedItemIndex = 0 },
                                         onAction = authViewModel::onAction,
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
+                                    )
+                                }
+                            }
+                            navigation<Route.Utility>(startDestination = Route.UtilityScreen){
+                                composable<Route.UtilityScreen>{
+                                    UtilityRoute(
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
+                                    )
+                                }
+                                composable<Route.AssistantScreen>{
+                                    AssistantRoute(
                                         updateScaffold = { scaffoldComponentState = it },
                                         navController = navController
                                     )

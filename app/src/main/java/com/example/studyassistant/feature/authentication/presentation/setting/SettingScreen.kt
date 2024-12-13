@@ -11,12 +11,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.example.studyassistant.feature.authentication.presentation.AuthAction
+import com.example.studyassistant.feature.authentication.presentation.AuthState
 import com.example.studyassistant.feature.authentication.presentation.setting.components.RemoteDataDialog
 import com.example.studyassistant.feature.authentication.presentation.setting.components.SettingList
 
 @Composable
 fun SettingsScreen(
     listState: LazyListState,
+    state: AuthState,
+    onLogoutClick:() -> Unit,
     onAction:(AuthAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -25,11 +28,11 @@ fun SettingsScreen(
         isOpen = isRemoveDataDialogOpen,
         onDismiss = { isRemoveDataDialogOpen = false },
         onKeepLocalDataClick = {
-            onAction(AuthAction.OnKeepLocalDataClick)
+            onAction(AuthAction.OnLogoutKeepLocalDataClick)
             isRemoveDataDialogOpen = false
         },
         onRemoveLocalDataClick = {
-            onAction(AuthAction.OnRemoveLocalDataClick)
+            onAction(AuthAction.OnLogoutRemoveLocalDataClick)
             isRemoveDataDialogOpen = false
         }
     )
@@ -40,7 +43,11 @@ fun SettingsScreen(
         SettingList(
             listState = listState,
             onLogoutClick = {
-                isRemoveDataDialogOpen = true
+                if(state.hasLocalData){
+                    isRemoveDataDialogOpen = true
+                }else{
+                    onAction(AuthAction.OnLogoutKeepLocalDataClick)
+                }
             }
         )
     }

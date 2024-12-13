@@ -1,5 +1,6 @@
 package com.example.studyassistant.feature.authentication.presentation.login
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,7 +67,10 @@ fun LoginScreen(
     SyncOptionDialog(
         text = changedString,
         isOpen = isSyncOptionDialogOpen,
-        onDismiss = { isSyncOptionDialogOpen = false },
+        onDismiss = {
+            onAction(AuthAction.OnLogoutKeepLocalDataClick)
+            isSyncOptionDialogOpen = false
+        },
         onSendLocalDataClick = {
             onAction(AuthAction.OnSendDataToRemoteClick)
             isSyncOptionDialogOpen = false
@@ -155,21 +158,25 @@ fun LoginScreen(
                 Text(text = "Login")
             }
             Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = {
-                onAction(AuthAction.OnToRegisterPageClick)
-            }) {
-                Text(text = "Don't have an account, Register")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = {
-                if(state.currentUser != null){
-                    isUserChangeDialogOpen = true
-                }else{
-                    onAction(AuthAction.OnUseNoAccountClick)
-                }
-            }) {
-                Text(text = "Use without account (Data save on local)")
-            }
+
+            Text(
+                modifier = Modifier.clickable{ onAction(AuthAction.OnToRegisterPageClick) },
+                text = "Don't have an account, Register"
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                modifier = Modifier.clickable{
+                    if(state.currentUser != null){
+                        isUserChangeDialogOpen = true
+                    }else{
+                        onAction(AuthAction.OnUseNoAccountClick)
+                    }
+                },
+                text = "Use without account (Data save on local)"
+            )
+
         }
     }
 }

@@ -246,72 +246,88 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun checkDataConsistency(): Result<Map<String, Int>, RemoteDbError>{
         Log.e("SyncProcess", "Start")
+        val currentUser = auth.currentUser?.toUser()
+        currentUser?.let {
+            // Collecting the flows once
+            val localSubjects: Set<Subject>
+            val localTasks: Set<Task>
+            val localSessions: Set<Session>
 
-        // Collecting the flows once
-        val localSubjects: Set<Subject>
-        val localTasks: Set<Task>
-        val localSessions: Set<Session>
+            try {
+                localSubjects = subjectDao.getAllSubjects().first().map { it.toSubject() }.toSet()
+                localTasks = taskDao.getAllTasks().first().map { it.toTask() }.toSet()
+                localSessions = sessionDao.getAllSessions().first().map { it.toSession() }.toSet()
+            } catch (e: Exception) {
+                Log.e("SyncProcess", "Error collecting local data: ${e.message}")
+                return Result.Error(RemoteDbError(message = e.message ?: "Unknown error."))
+            }
+            Log.e("SyncProcess", "Local data collected")
 
-        try {
-            localSubjects = subjectDao.getAllSubjects().first().map { it.toSubject() }.toSet()
-            localTasks = taskDao.getAllTasks().first().map { it.toTask() }.toSet()
-            localSessions = sessionDao.getAllSessions().first().map { it.toSession() }.toSet()
-        } catch (e: Exception) {
-            Log.e("SyncProcess", "Error collecting local data: ${e.message}")
-            return Result.Error(RemoteDbError(message = e.message ?: "Unknown error."))
+
+            val remoteSubjects: List<Subject>
+            val remoteTasks: List<Task>
+            val remoteSessions: List<Session>
+            // Get User data only
+            try {
+                remoteSubjects = remoteDb.collection("Subject")
+                    .whereEqualTo("userId", currentUser.userId).get().await()
+                    .map { document -> document.toObject(RemoteSubject::class.java).toSubject() }
+                remoteTasks = remoteDb.collection("Task")
+                    .whereEqualTo("userId", currentUser.userId).get().await()
+                    .map { document -> document.toObject(RemoteTask::class.java).toTask() }
+                remoteSessions = remoteDb.collection("Session")
+                    .whereEqualTo("userId", currentUser.userId).get().await()
+                    .map { document -> document.toObject(RemoteSession::class.java).toSession() }
+            } catch (e: Exception) {
+                Log.d("Sync Exception", "Exception class: ${e::class.java.name}")
+                Log.d("Sync Exception", "Exception message: ${e.message}")
+                return Result.Error(RemoteDbError(message = e.message ?: "Unknown error."))
+            }
+
+            Log.e("SyncProcess", "Remote")
+
+            val changesInRemoteSubject = remoteSubjects.filterNot { it in localSubjects }.size
+            val changesInRemoteTask = remoteTasks.filterNot { it in localTasks }.size
+            val changesInRemoteSession = remoteSessions.filterNot { it in localSessions }.size
+            val changeInRemote =
+                changesInRemoteSubject + changesInRemoteTask + changesInRemoteSession
+
+            val changesInLocalSubject = localSubjects.filterNot { it in remoteSubjects }.size
+            val changesInLocalTask = localTasks.filterNot { it in remoteTasks }.size
+            val changesInLocalSession = localSessions.filterNot { it in remoteSessions }.size
+            val changeInLocal = changesInLocalSubject + changesInLocalTask + changesInLocalSession
+
+            Log.e("SyncProcess", "Calculate")
+
+            return if (changeInRemote > 0 || changeInLocal > 0) {
+                Log.e("SyncProcess", "End: Has Changed")
+                Result.Success(
+                    mapOf(
+                        "Remote" to changeInRemote,
+                        "Local" to changeInLocal
+                    )
+                )
+            }else{
+                Log.e("SyncProcess", "End: No changed")
+                return Result.Success(emptyMap())
+            }
+
         }
-        Log.e("SyncProcess", "Local data collected")
-
-
-        val remoteSubjects: List<Subject>
-        val remoteTasks: List<Task>
-        val remoteSessions: List<Session>
-        try{
-            remoteSubjects = remoteDb.collection("Subject").get().await()
-                .map { document -> document.toObject(RemoteSubject::class.java).toSubject() }
-            remoteTasks = remoteDb.collection("Task").get().await()
-                .map { document -> document.toObject(RemoteTask::class.java).toTask() }
-            remoteSessions = remoteDb.collection("Session").get().await()
-                .map { document -> document.toObject(RemoteSession::class.java).toSession() }
-        }catch (e: Exception){
-            Log.d("Sync Exception", "Exception class: ${e::class.java.name}")
-            Log.d("Sync Exception", "Exception message: ${e.message}")
-            return Result.Error(RemoteDbError(message = e.message ?: "Unknown error."))
-        }
-
-        Log.e("SyncProcess", "Remote")
-
-        val changesInRemoteSubject = remoteSubjects.filterNot { it in localSubjects }.size
-        val changesInRemoteTask = remoteTasks.filterNot { it in localTasks }.size
-        val changesInRemoteSession = remoteSessions.filterNot { it in localSessions }.size
-        val changeInRemote = changesInRemoteSubject + changesInRemoteTask + changesInRemoteSession
-
-        val changesInLocalSubject = localSubjects.filterNot { it in remoteSubjects }.size
-        val changesInLocalTask = localTasks.filterNot { it in remoteTasks }.size
-        val changesInLocalSession = localSessions.filterNot { it in remoteSessions }.size
-        val changeInLocal = changesInLocalSubject + changesInLocalTask + changesInLocalSession
-
-        Log.e("SyncProcess", "Calculate")
-
-        return if(changeInRemote > 0 || changeInLocal > 0){
-            Log.e("SyncProcess", "End: Has Changed")
-            Result.Success(mapOf(
-                "Remote" to changeInRemote,
-                "Local" to changeInLocal
-            ))
-        }else{
-            Log.e("SyncProcess", "End: No changed")
-            Result.Success(emptyMap())
-        }
+            Log.e("SyncProcess", "End: No user found")
+        return Result.Error(RemoteDbError("No user found."))
     }
 
     override fun checkHasLocalData(): Flow<Boolean> {
         return flow {
-            val localSubject = subjectDao.getAllSubjects().first()
-            val localTask = taskDao.getAllTasks().first()
-            val localSession = sessionDao.getAllSessions().first()
-            // Emit true if any collection is not empty, otherwise false
-            emit(localSubject.isNotEmpty() || localTask.isNotEmpty() || localSession.isNotEmpty())
+            while (true) {
+                val localSubject = subjectDao.getAllSubjects().first()
+                val localTask = taskDao.getAllTasks().first()
+                val localSession = sessionDao.getAllSessions().first()
+                // Emit true if any collection is not empty, otherwise false
+                var hasLocalData = localSubject.isNotEmpty() || localTask.isNotEmpty()
+                        || localSession.isNotEmpty()
+                emit(hasLocalData)
+            }
         }
     }
 

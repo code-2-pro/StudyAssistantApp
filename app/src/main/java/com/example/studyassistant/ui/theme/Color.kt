@@ -69,6 +69,10 @@ val Blue = Color(0xFF2965C9)
 val Green = Color(0xFF1E9651)
 val Orange = Color(0xFFFF9800)
 
+val ColorUserMessage = Color(0xFF03A9F4)
+val ColorModelMessage = Color(0xFF4CAF50)
+val Purple80 = Color(0xFFD0BCFF)
+
 val gradient1 = listOf(Color(0xFFad5389), Color(0xFF3c1053))
 val gradient2 = listOf(Color(0xFF3A6073), Color(0xFF16222A))
 val gradient3 = listOf(Color(0xFFF857A6), Color(0xFFFF5858))

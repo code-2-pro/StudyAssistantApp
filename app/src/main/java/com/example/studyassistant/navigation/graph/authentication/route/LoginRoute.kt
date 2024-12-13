@@ -15,7 +15,6 @@ import com.example.studyassistant.feature.authentication.presentation.AuthAction
 import com.example.studyassistant.feature.authentication.presentation.AuthEvent
 import com.example.studyassistant.feature.authentication.presentation.AuthState
 import com.example.studyassistant.feature.authentication.presentation.login.LoginScreen
-import com.example.studyassistant.feature.studytracker.presentation.dashboard.DashboardScreenTopBar
 import kotlinx.coroutines.flow.Flow
 
 @Composable
@@ -29,7 +28,7 @@ fun NavGraphBuilder.LoginRoute(
     LaunchedEffect(key1 = true) {
         updateScaffold(
             ScaffoldComponentState(
-                topBarContent = { DashboardScreenTopBar() },
+                topBarContent = { },
                 fabContent = { },
                 scaffoldModifier = Modifier
             )

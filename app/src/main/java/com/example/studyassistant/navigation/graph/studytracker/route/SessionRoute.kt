@@ -92,7 +92,6 @@ fun NavGraphBuilder.SessionRoute(
                 )
             },
             fabContent = { },
-            bottomBarContent = {},
             scaffoldModifier = Modifier
         ))
     }
