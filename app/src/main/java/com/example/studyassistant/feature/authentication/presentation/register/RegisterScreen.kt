@@ -130,13 +130,13 @@ fun RegisterScreen(
             Button(
                 enabled = !email.isBlank() && !password.isBlank(),
                 onClick = {
-                    onAction(AuthAction.OnRegisterClick(email, password, displayName))
+                    onAction(AuthAction.Register(email, password, displayName))
                 }) {
                 Text(text = "Create account")
             }
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = {
-                onAction(AuthAction.OnToLoginPageClick)
+                onAction(AuthAction.GoToLoginPage)
             }) {
                 Text(text = "Already have an account, Login")
             }

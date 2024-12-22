@@ -2,7 +2,9 @@ package com.example.studyassistant.di
 
 import com.example.studyassistant.feature.authentication.data.repository.AuthRepositoryImpl
 import com.example.studyassistant.feature.authentication.domain.repository.AuthRepository
-import com.example.studyassistant.feature.flashcard.data.FlashcardRepositoryImpl
+import com.example.studyassistant.feature.flashcard.data.repository.FlashcardCategoryRepositoryImpl
+import com.example.studyassistant.feature.flashcard.data.repository.FlashcardRepositoryImpl
+import com.example.studyassistant.feature.flashcard.domain.repository.FlashcardCategoryRepository
 import com.example.studyassistant.feature.flashcard.domain.repository.FlashcardRepository
 import com.example.studyassistant.feature.studytracker.data.repository.SessionRepositoryImpl
 import com.example.studyassistant.feature.studytracker.data.repository.SubjectRepositoryImpl
@@ -40,15 +42,20 @@ abstract class RepositoryModule {
 
     @Singleton
     @Binds
+    abstract fun bindAuthRepository(
+        authRepositoryImpl: AuthRepositoryImpl
+    ): AuthRepository
+
+    @Singleton
+    @Binds
     abstract fun bindFlashcardRepository(
         flashcardRepositoryImpl: FlashcardRepositoryImpl
     ): FlashcardRepository
 
     @Singleton
     @Binds
-    abstract fun bindAuthRepository(
-        authRepositoryImpl: AuthRepositoryImpl
-    ): AuthRepository
-
+    abstract fun bindFlashcardCategoryRepository(
+        categoryRepositoryImpl: FlashcardCategoryRepositoryImpl
+    ): FlashcardCategoryRepository
 
 }

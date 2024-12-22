@@ -7,13 +7,17 @@ import kotlinx.coroutines.flow.Flow
 
 interface SubjectRepository {
 
-    suspend fun upsertSubject(subject: Subject): Result<Unit, RemoteDbError>
+    suspend fun upsertSubject(subject: Subject)
+
+    suspend fun upsertSubjectOnRemote(subject: Subject, userId: String): Result<Unit, RemoteDbError>
 
     fun getTotalSubjectCount(): Flow<Int>
 
     fun getTotalGoalHours(): Flow<Float>
 
-    suspend fun deleteSubject(subjectId: String): Result<Unit, RemoteDbError>
+    suspend fun deleteSubject(subjectId: String)
+
+    suspend fun deleteSubjectOnRemote(subjectId: String, userId: String): Result<Unit, RemoteDbError>
 
     fun getSubjectById(subjectId: String): Flow<Subject?>
 

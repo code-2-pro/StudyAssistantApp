@@ -1,7 +1,6 @@
 package com.example.studyassistant.feature.studytracker.data.mapper
 
 import com.example.studyassistant.feature.authentication.data.dto.RemoteSession
-import com.example.studyassistant.feature.authentication.domain.model.User
 import com.example.studyassistant.feature.studytracker.data.local.entity.SessionEntity
 import com.example.studyassistant.feature.studytracker.domain.model.Session
 
@@ -24,9 +23,9 @@ fun Session.toSessionEntity(): SessionEntity{
         sessionId = sessionId
     )
 }
-fun Session.toRemoteSession(user: User): RemoteSession{
+fun Session.toRemoteSession(userId: String): RemoteSession{
     return RemoteSession(
-        userId = user.userId?: "",
+        userId = userId,
         sessionSubjectId = sessionSubjectId,
         relatedToSubject = relatedToSubject,
         date = date,

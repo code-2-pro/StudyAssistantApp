@@ -1,10 +1,8 @@
 package com.example.studyassistant.feature.studytracker.data.repository
 
 import android.util.Log
-import com.example.studyassistant.core.domain.ConnectivityObserver
 import com.example.studyassistant.core.domain.util.RemoteDbError
 import com.example.studyassistant.core.domain.util.Result
-import com.example.studyassistant.feature.authentication.data.mapper.toUser
 import com.example.studyassistant.feature.studytracker.data.local.dao.SessionDao
 import com.example.studyassistant.feature.studytracker.data.local.dao.SubjectDao
 import com.example.studyassistant.feature.studytracker.data.local.dao.TaskDao
@@ -13,14 +11,12 @@ import com.example.studyassistant.feature.studytracker.data.mapper.toSubject
 import com.example.studyassistant.feature.studytracker.data.mapper.toSubjectEntity
 import com.example.studyassistant.feature.studytracker.domain.model.Subject
 import com.example.studyassistant.feature.studytracker.domain.repository.SubjectRepository
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -29,37 +25,35 @@ class SubjectRepositoryImpl @Inject constructor(
     private val subjectDao: SubjectDao,
     private val taskDao: TaskDao,
     private val sessionDao: SessionDao,
-    private val connectivityObserver: ConnectivityObserver,
-    private val auth: FirebaseAuth,
     private val remoteDb: FirebaseFirestore
 ): SubjectRepository {
 
-    override suspend fun upsertSubject(subject: Subject): Result<Unit, RemoteDbError> {
+    override suspend fun upsertSubject(subject: Subject){
         subjectDao.upsertSubject(subject.toSubjectEntity())
-        val isConnected = connectivityObserver.isConnected.first()
-        if(isConnected){
-            val currentUser = auth.currentUser?.toUser()
-            currentUser?.let {
-                val subjectCollectionRef = remoteDb.collection("Subject")
-                val remoteSubject = subject.toRemoteSubject(currentUser)
-                try{
-                    val querySnapshot = subjectCollectionRef
-                        .whereEqualTo("userId", remoteSubject.userId)
-                        .whereEqualTo("subjectId", remoteSubject.subjectId)
-                        .get()
-                        .await()
+    }
 
-                    if (!querySnapshot.isEmpty) {
-                        val subjectRef = querySnapshot.documents[0].reference
-                        subjectRef.set(remoteSubject, SetOptions.merge()).await()
-                    } else {
-                        // Create a new document
-                        subjectCollectionRef.add(remoteSubject).await()
-                    }
-                }catch (e: Exception){
-                    return Result.Error(RemoteDbError(message = e.message ?: "Unknown error"))
-                }
+    override suspend fun upsertSubjectOnRemote(
+        subject: Subject,
+        userId: String,
+    ): Result<Unit, RemoteDbError> {
+        val subjectCollectionRef = remoteDb.collection("Subject")
+        val remoteSubject = subject.toRemoteSubject(userId)
+        try{
+            val querySnapshot = subjectCollectionRef
+                .whereEqualTo("userId", remoteSubject.userId)
+                .whereEqualTo("subjectId", remoteSubject.subjectId)
+                .get()
+                .await()
+
+            if (!querySnapshot.isEmpty) {
+                val subjectRef = querySnapshot.documents[0].reference
+                subjectRef.set(remoteSubject, SetOptions.merge()).await()
+            } else {
+                // Create a new document
+                subjectCollectionRef.add(remoteSubject).await()
             }
+        }catch (e: Exception){
+            return Result.Error(RemoteDbError(message = e.message ?: "Unknown error"))
         }
         return Result.Success(Unit)
     }
@@ -72,57 +66,56 @@ class SubjectRepositoryImpl @Inject constructor(
         return subjectDao.getTotalGoalHours()
     }
 
-    override suspend fun deleteSubject(subjectId: String): Result<Unit, RemoteDbError> {
+    override suspend fun deleteSubject(subjectId: String){
         subjectDao.deleteSubject(subjectId)
         taskDao.deleteTasksBySubjectId(subjectId)
         sessionDao.deleteSessionBySubjectId(subjectId)
-        val isConnected = connectivityObserver.isConnected.first()
-        if(isConnected){
-            val currentUser = auth.currentUser?.toUser()
-            currentUser?.let {
-                val subjectCollectionRef = remoteDb.collection("Subject")
-                val taskCollectionRef = remoteDb.collection("Task")
-                val sessionCollectionRef = remoteDb.collection("Session")
-                val subjectQuery = subjectCollectionRef
-                    .whereEqualTo("userId", currentUser.userId)
-                    .whereEqualTo("subjectId", subjectId)
-                val taskQuery = taskCollectionRef
-                    .whereEqualTo("userId", currentUser.userId)
-                    .whereEqualTo("taskSubjectId", subjectId)
-                val sessionQuery = sessionCollectionRef
-                    .whereEqualTo("userId", currentUser.userId)
-                    .whereEqualTo("sessionSubjectId", subjectId)
+    }
 
-                try{
-                    val batch = remoteDb.batch()
+    override suspend fun deleteSubjectOnRemote(
+        subjectId: String,
+        userId: String,
+    ): Result<Unit, RemoteDbError> {
+        val subjectCollectionRef = remoteDb.collection("Subject")
+        val taskCollectionRef = remoteDb.collection("Task")
+        val sessionCollectionRef = remoteDb.collection("Session")
+        val subjectQuery = subjectCollectionRef
+            .whereEqualTo("userId", userId)
+            .whereEqualTo("subjectId", subjectId)
+        val taskQuery = taskCollectionRef
+            .whereEqualTo("userId", userId)
+            .whereEqualTo("taskSubjectId", subjectId)
+        val sessionQuery = sessionCollectionRef
+            .whereEqualTo("userId", userId)
+            .whereEqualTo("sessionSubjectId", subjectId)
 
-                    // Add subject deletions to the batch
-                    val subjectQuerySnapshot = subjectQuery.get().await()
-                    for (document in subjectQuerySnapshot.documents) {
-                        batch.delete(document.reference)
-                    }
+        try{
+            val batch = remoteDb.batch()
 
-                    // Add task deletions to the batch
-                    val taskQuerySnapshot = taskQuery.get().await()
-                    for (document in taskQuerySnapshot.documents) {
-                        batch.delete(document.reference)
-                    }
-
-                    // Add session deletions to the batch
-                    val sessionQuerySnapshot = sessionQuery.get().await()
-                    for (document in sessionQuerySnapshot.documents) {
-                        batch.delete(document.reference)
-                    }
-
-                    // Commit the batch
-                    batch.commit().await()
-
-                }catch (e: Exception){
-                    return Result.Error(RemoteDbError(message = e.message ?: "Unknown error"))
-                }
+            // Add subject deletions to the batch
+            val subjectQuerySnapshot = subjectQuery.get().await()
+            for (document in subjectQuerySnapshot.documents) {
+                batch.delete(document.reference)
             }
-        }
 
+            // Add task deletions to the batch
+            val taskQuerySnapshot = taskQuery.get().await()
+            for (document in taskQuerySnapshot.documents) {
+                batch.delete(document.reference)
+            }
+
+            // Add session deletions to the batch
+            val sessionQuerySnapshot = sessionQuery.get().await()
+            for (document in sessionQuerySnapshot.documents) {
+                batch.delete(document.reference)
+            }
+
+            // Commit the batch
+            batch.commit().await()
+
+        }catch (e: Exception){
+            return Result.Error(RemoteDbError(message = e.message ?: "Unknown error"))
+        }
         return Result.Success(Unit)
     }
 

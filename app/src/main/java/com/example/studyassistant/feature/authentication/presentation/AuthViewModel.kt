@@ -26,7 +26,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val connectivityObserver: ConnectivityObserver,
+    connectivityObserver: ConnectivityObserver,
     private val navigator: Navigator
 ): ViewModel() {
 
@@ -79,29 +79,86 @@ class AuthViewModel @Inject constructor(
 
      fun onAction(action: AuthAction){
         when(action){
-            is AuthAction.OnLoginClick -> login(action.email, action.password)
-            is AuthAction.OnRegisterClick -> {
+            is AuthAction.Login -> login(action.email, action.password)
+            is AuthAction.Register -> {
                 register(action.email, action.password, action.displayName)
             }
-            AuthAction.OnToLoginPageClick -> goToLoginPage()
-            AuthAction.OnToRegisterPageClick -> goToRegisterPage()
-            AuthAction.OnGetDataFromRemoteClick -> {
+            is AuthAction.UpdateUserInfo -> {
+                updateUserInfo(
+                    action.currentPassword,
+                    action.newDisplayName,
+                    action.newEmail,
+                    action.newPassword
+                )
+            }
+            AuthAction.GoToLoginPage -> goToLoginPage()
+            AuthAction.GoToRegisterPage -> goToRegisterPage()
+            AuthAction.GetDataFromRemote -> {
                 getDataFromRemote()
             }
-            AuthAction.OnSendDataToRemoteClick -> {
+            AuthAction.SendDataToRemote -> {
                 sendDataToRemote()
             }
-            AuthAction.OnUseNoAccountClick -> {
+            AuthAction.UseNoAccount -> {
                 useNoAccount()
             }
-            AuthAction.OnLogoutKeepLocalDataClick -> {
+            AuthAction.LogoutKeepLocalData -> {
                 logoutWithKeepLocalData()
             }
-            AuthAction.OnLogoutRemoveLocalDataClick -> {
+            AuthAction.LogoutRemoveLocalData -> {
                 logoutWithRemoveLocalData()
+            }
+            AuthAction.DismissSync -> dismissSync()
+        }
+    }
+
+    private fun dismissSync(){
+        viewModelScope.launch{
+            _state.update { it.copy(
+                currentUser = null,
+            ) }
+            authRepository.logout()
+        }
+    }
+
+    private fun updateUserInfo(
+        currentPassword: String,
+        newDisplayName: String,
+        newEmail: String,
+        newPassword: String
+    ) {
+        viewModelScope.launch {
+            val currentUser = state.value.currentUser
+            _state.update { it.copy(isLoading = true) }
+            if (currentUser != null) {
+                authRepository.updateUserInfo(
+                    currentPassword = currentPassword,
+                    newDisplayName = newDisplayName,
+                    newEmail = newEmail,
+                    newPassword = newPassword
+                )
+                    .onSuccess {
+                        _state.update { it.copy(
+                            currentUser = authRepository.getCurrentUser(),
+                            isLoading = false
+                        ) }
+                        navigator.navigateUp()
+                        SnackbarController.sendEvent(
+                            SnackbarEvent(message = "Update Info Successfully")
+                        )
+                    }
+                    .onError { error ->
+                        _state.update { it.copy(isLoading = false) }
+                        _events.send(AuthEvent.AuthenticationError(error))
+                    }
+            } else {
+                // Handle case where no current user is found
+                _state.update { it.copy(isLoading = false) }
+                _events.send(AuthEvent.AuthenticationError(AuthError.USER_NOT_FOUND))
             }
         }
     }
+
 
     private fun logoutWithRemoveLocalData(){
         viewModelScope.launch{
@@ -226,12 +283,15 @@ class AuthViewModel @Inject constructor(
                     .onSuccess {  user ->
                         authRepository.checkDataConsistency()
                             .onSuccess { changedMap ->
-                                _state.update { it.copy(isLoading = false) }
+                                _state.update { it.copy(
+                                    isLoading = false,
+                                    currentUser = user
+                                ) }
                                 Log.e("Sync", "Success")
                                 if(changedMap.isNotEmpty()){
                                     _events.send(AuthEvent.SyncChange(changedMap))
                                 }else{
-                                    _state.update { it.copy(currentUser = user) }
+                                    Log.e("Sync", "Reach No Changed")
                                     navigator.navigate(
                                         route =  Route.StudyTracker,
                                         navOptions = {

@@ -46,8 +46,7 @@ fun LazyListScope.taskList(
     if(tasks.isEmpty()){
         item{
             Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(

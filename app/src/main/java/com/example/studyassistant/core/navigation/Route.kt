@@ -38,7 +38,23 @@ sealed interface Route {
     data object Flashcard: Route
 
     @Serializable
-    data object FlashcardScreen: Route
+    data object CategoryScreen: Route
+
+    @Serializable
+    data class CategoryDetailScreen(
+        val categoryId: String
+    ): Route
+
+    @Serializable
+    data class FlashcardScreen(
+        val flashcardId: String?,
+        val categoryId: String?
+    ): Route
+
+    @Serializable
+    data class FlashcardDisplayScreen(
+        val categoryId: String
+    ): Route
 
     // Utility Graph
     @Serializable
@@ -51,12 +67,15 @@ sealed interface Route {
     data object AssistantScreen: Route
 
     @Serializable
-    data object DocumentAnalyzer: Route
+    data object DocumentAnalyzerScreen: Route
 
     // Setting Graph
     @Serializable
     data object Setting: Route
 
     @Serializable
-    data object MainSetting: Route
+    data object MainSettingScreen: Route
+
+    @Serializable
+    data object AccountScreen: Route
 }

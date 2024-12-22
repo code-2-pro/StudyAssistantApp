@@ -7,10 +7,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.example.studyassistant.core.domain.ConnectivityObserver
 import com.example.studyassistant.core.navigation.Navigator
-import com.example.studyassistant.core.navigation.Route.SubjectScreen
+import com.example.studyassistant.core.navigation.Route
 import com.example.studyassistant.core.presentation.util.SnackbarController
 import com.example.studyassistant.core.presentation.util.SnackbarEvent
+import com.example.studyassistant.feature.authentication.domain.repository.AuthRepository
 import com.example.studyassistant.feature.studytracker.domain.model.Subject
 import com.example.studyassistant.feature.studytracker.domain.model.Task
 import com.example.studyassistant.feature.studytracker.domain.repository.SessionRepository
@@ -21,6 +23,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -30,14 +33,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SubjectViewModel @Inject constructor(
+    connectivityObserver: ConnectivityObserver,
     private val subjectRepository: SubjectRepository,
     private val taskRepository: TaskRepository,
     private val sessionRepository: SessionRepository,
+    private val authRepository: AuthRepository,
     private val navigator: Navigator,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
 
-    private val navArgs = savedStateHandle.toRoute<SubjectScreen>()
+    private val navArgs = savedStateHandle.toRoute<Route.SubjectScreen>()
 
     private val _state = MutableStateFlow(SubjectState())
     val state = combine(
@@ -58,6 +63,13 @@ class SubjectViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
         initialValue = SubjectState()
     )
+
+    val isOnline: StateFlow<Boolean> = connectivityObserver.isConnected
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false
+        )
 
     init {
         fetchSubject()
@@ -80,7 +92,6 @@ class SubjectViewModel @Inject constructor(
                     it.copy(subjectCardColors = action.color)
                 }
             }
-            SubjectAction.UpdateSubject -> updateSubject()
             is SubjectAction.OnCancelSubjectChanges -> {
                 _state.update {
                     it.copy(
@@ -90,6 +101,7 @@ class SubjectViewModel @Inject constructor(
                     )
                 }
             }
+            SubjectAction.UpdateSubject -> updateSubject()
             SubjectAction.DeleteSubject -> deleteSubject()
             is SubjectAction.OnTaskIsCompleteChange -> {
                 updateTask(action.task)
@@ -131,14 +143,20 @@ class SubjectViewModel @Inject constructor(
     private fun updateSubject() {
         viewModelScope.launch{
             try {
-                subjectRepository.upsertSubject(
-                    subject = Subject(
-                        subjectId = state.value.currentSubjectId,
-                        name = state.value.subjectName,
-                        goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
-                        colors = state.value.subjectCardColors.map { it.toArgb() }
-                    )
+                val subject = Subject(
+                    subjectId = state.value.currentSubjectId,
+                    name = state.value.subjectName,
+                    goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
+                    colors = state.value.subjectCardColors.map { it.toArgb() }
                 )
+                subjectRepository.upsertSubject(subject)
+                val currentUser = authRepository.getCurrentUser()
+                if(isOnline.value && currentUser != null){
+                    subjectRepository.upsertSubjectOnRemote(
+                        subject = subject,
+                        userId = currentUser.userId.toString()
+                    )
+                }
                 SnackbarController.sendEvent(
                     event = SnackbarEvent(
                         message = "Subject updated successfully."
@@ -162,6 +180,13 @@ class SubjectViewModel @Inject constructor(
                 if(currentSubjectId.isNotBlank()){
                     withContext(Dispatchers.IO) {
                         subjectRepository.deleteSubject(subjectId = currentSubjectId)
+                        val currentUser = authRepository.getCurrentUser()
+                        if(isOnline.value && currentUser != null){
+                            subjectRepository.deleteSubjectOnRemote(
+                                subjectId = currentSubjectId,
+                                userId = currentUser.userId.toString()
+                            )
+                        }
                     }
                     SnackbarController.sendEvent(
                         event = SnackbarEvent(
@@ -190,9 +215,15 @@ class SubjectViewModel @Inject constructor(
     private fun updateTask(task: Task) {
         viewModelScope.launch{
             try{
-                taskRepository.upsertTask(
-                    task = task.copy(isComplete = !task.isComplete)
-                )
+                val task = task.copy(isComplete = !task.isComplete)
+                taskRepository.upsertTask(task)
+                val currentUser = authRepository.getCurrentUser()
+                if(isOnline.value && currentUser != null){
+                    taskRepository.upsertTaskOnRemote(
+                        task = task,
+                        userId = currentUser.userId.toString()
+                    )
+                }
                 if(task.isComplete){
                     SnackbarController.sendEvent(
                         event = SnackbarEvent(
@@ -223,6 +254,13 @@ class SubjectViewModel @Inject constructor(
             try {
                 state.value.session?.let {
                     sessionRepository.deleteSession(it)
+                    val currentUser = authRepository.getCurrentUser()
+                    if(isOnline.value && currentUser != null){
+                        sessionRepository.deleteSessionOnRemote(
+                            session =  it,
+                            userId = currentUser.userId.toString()
+                        )
+                    }
                 }
                 SnackbarController.sendEvent(
                     event = SnackbarEvent(message = "Session deleted successfully.")

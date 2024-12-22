@@ -40,29 +40,29 @@ val navItems = listOf(
         route = Route.DashboardScreen,
         selectedIcon = Icons.Filled.Home,
         unselectedIcon = Icons.Outlined.Home,
-        hasNews = false,
+        hasNews = false
     ),
     BottomNavigationItem(
         title = "Flashcard",
-        route = Route.FlashcardScreen,
+        route = Route.CategoryScreen,
         selectedIcon = Icons.Filled.AccountBox,
         unselectedIcon = Icons.Outlined.AccountBox,
-        hasNews = false,
-        badgeCount = 45
+        hasNews = false
+//        badgeCount = 45
     ),
     BottomNavigationItem(
         title = "Utility",
         route = Route.UtilityScreen,
         selectedIcon = Icons.Filled.Menu,
         unselectedIcon = Icons.Outlined.Menu,
-        hasNews = false,
+        hasNews = false
     ),
     BottomNavigationItem(
         title = "Settings",
-        route = Route.MainSetting,
+        route = Route.MainSettingScreen,
         selectedIcon = Icons.Filled.Settings,
         unselectedIcon = Icons.Outlined.Settings,
-        hasNews = true,
+        hasNews = false
     ),
 )
 
@@ -88,7 +88,9 @@ fun BottomBarNavigation(
     }
 
     val isInBottomNavItem = currentRoute in listOf(
-        "DashboardScreen", "FlashcardScreen", "UtilityScreen", "MainSetting"
+        "DashboardScreen", "FlashcardScreen",
+        "UtilityScreen", "MainSettingScreen",
+        "CategoryScreen"
     )
     if(isInBottomNavItem){
         NavigationBar {

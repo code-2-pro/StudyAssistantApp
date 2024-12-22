@@ -15,9 +15,35 @@
     <string name="error_invalid_email">Please enter a valid email address.</string>
     <string name="error_weak_password">Please use password at least 6 characters long.</string>
     <string name="error_email_is_exist">This email is already registered. Please use a different email.</string>
-    <string name="error_invalid_login_credentials">Your login info is invalid. Please try again.</string>
+    <string name="error_invalid_login_credentials">Your info is invalid. Please try again.</string>
     <string name="error_user_not_found">No account found with this email. Please register or try again.</string>
     <string name="error_network_error">Couldn\'t connect to server, please check your internet connection.\n</string>
     <string name="error_unknown">Something went wrong. Please try again later.</string>
     <string name="error_too_many_request">Oops, it seems like your quota is exceeded.</string>
+    <string name="error_category_name_is_blank">Category name is blank.</string>
+    <string name="error_category_name_too_short">Category name is too short.</string>
+    <string name="error_category_name_too_long">Category name is too long.</string>
+    <string name="error_flashcard_input_is_blank">This field is blank.</string>
+    <string name="error_flashcard_input_too_short">This field is too short.</string>
+    <string name="error_flashcard_input_too_long">This field is too long.</string>
+    <string name="error_card_quantity_is_blank">Card quantity is blank.</string>
+    <string name="error_card_quantity_is_invalid">Card Quantity is invalid.</string>
+    <string name="error_card_quantity_is_at_least_one">Card Quantity is at least one.</string>
+    <string name="error_card_quantity_is_max_at_10">Card Quantity is max at 10.</string>
+    <string name="error_requires_recent_login">Require login to update info.</string>
+
+    <string name="error_user_disabled">User account is disabled.</string>
+    <string name="error_invalid_password">Invalid password.</string>
+    <string name="error_account_exists_with_different_credential">Account exists with different credentials.</string>
+    <string name="error_custom_token_mismatch">Custom token mismatch.</string>
+    <string name="error_invalid_custom_token">Invalid custom token.</string>
+    <string name="error_credential_already_in_use">Credential already in use.</string>
+    <string name="error_operation_not_allowed">Operation not allowed.</string>
+    <string name="error_missing_mfa_info">Missing multi-factor authentication information.</string>
+    <string name="error_missing_mfa_pending_credential">Missing multi-factor pending credentials.</string>
+    <string name="error_invalid_mfa_session">Invalid multi-factor session.</string>
+    <string name="error_invalid_mfa_pending_credential">Invalid multi-factor pending credentials.</string>
+    <string name="error_second_factor_exists">Second-factor authentication already exists.</string>
+    <string name="error_second_factor_limit_exceeded">Second-factor authentication limit exceeded.</string>
+
 </resources>

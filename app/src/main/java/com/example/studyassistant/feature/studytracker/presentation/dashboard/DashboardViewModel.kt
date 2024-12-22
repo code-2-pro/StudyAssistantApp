@@ -4,8 +4,10 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.studyassistant.core.domain.ConnectivityObserver
 import com.example.studyassistant.core.presentation.util.SnackbarController
 import com.example.studyassistant.core.presentation.util.SnackbarEvent
+import com.example.studyassistant.feature.authentication.domain.repository.AuthRepository
 import com.example.studyassistant.feature.studytracker.domain.model.Session
 import com.example.studyassistant.feature.studytracker.domain.model.Subject
 import com.example.studyassistant.feature.studytracker.domain.model.Task
@@ -26,9 +28,11 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
+    connectivityObserver: ConnectivityObserver,
     private val subjectRepository: SubjectRepository,
     private val sessionRepository: SessionRepository,
     private val taskRepository: TaskRepository,
+    private val authRepository: AuthRepository,
 ): ViewModel() {
 
     val _state = MutableStateFlow(DashboardState())
@@ -65,6 +69,14 @@ class DashboardViewModel @Inject constructor(
             initialValue = emptyList()
     )
 
+    val isOnline: StateFlow<Boolean> = connectivityObserver.isConnected
+        .stateIn(
+            scope = viewModelScope, // Use the ViewModel's coroutine scope
+            started = SharingStarted.Eagerly, // Start eagerly collecting the flow
+            initialValue = false
+        )
+
+
     fun onAction(action: DashboardAction){
         when(action){
             is DashboardAction.OnSubjectNameChange -> {
@@ -98,9 +110,15 @@ class DashboardViewModel @Inject constructor(
     private fun updateTask(task: Task) {
         viewModelScope.launch{
             try{
-                taskRepository.upsertTask(
-                    task = task.copy(isComplete = !task.isComplete)
-                )
+                val task = task.copy(isComplete = !task.isComplete)
+                taskRepository.upsertTask(task)
+                val currentUser = authRepository.getCurrentUser()
+                if(isOnline.value && currentUser != null){
+                    taskRepository.upsertTaskOnRemote(
+                        task = task,
+                        userId = currentUser.userId.toString()
+                    )
+                }
                 SnackbarController.sendEvent(
                     event = SnackbarEvent(
                         message = "Saved in completed tasks."
@@ -121,14 +139,20 @@ class DashboardViewModel @Inject constructor(
     private fun saveSubject() {
         viewModelScope.launch{
             try{
-                subjectRepository.upsertSubject(
-                    subject = Subject(
-                        subjectId = UUID.randomUUID().toString(),
-                        name = state.value.subjectName,
-                        goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
-                        colors = state.value.subjectCardColors.map { it.toArgb() }
-                    )
+                val subject = Subject(
+                    subjectId = UUID.randomUUID().toString(),
+                    name = state.value.subjectName,
+                    goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
+                    colors = state.value.subjectCardColors.map { it.toArgb() }
                 )
+                subjectRepository.upsertSubject(subject)
+                val currentUser = authRepository.getCurrentUser()
+                if(isOnline.value && currentUser != null){
+                    subjectRepository.upsertSubjectOnRemote(
+                        subject = subject,
+                        userId = currentUser.userId.toString()
+                    )
+                }
                 _state.update {
                     it.copy(
                         subjectName = "",
@@ -157,6 +181,13 @@ class DashboardViewModel @Inject constructor(
             try {
                 state.value.session?.let {
                     sessionRepository.deleteSession(it)
+                    val currentUser = authRepository.getCurrentUser()
+                    if(isOnline.value && currentUser != null){
+                        sessionRepository.deleteSessionOnRemote(
+                            session =  it,
+                            userId = currentUser.userId.toString()
+                        )
+                    }
                 }
                 SnackbarController.sendEvent(
                     event = SnackbarEvent(message = "Session deleted successfully.")

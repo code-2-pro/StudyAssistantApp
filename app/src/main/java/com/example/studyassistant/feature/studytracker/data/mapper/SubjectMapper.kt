@@ -1,7 +1,6 @@
 package com.example.studyassistant.feature.studytracker.data.mapper
 
 import com.example.studyassistant.feature.authentication.data.dto.RemoteSubject
-import com.example.studyassistant.feature.authentication.domain.model.User
 import com.example.studyassistant.feature.studytracker.data.local.entity.SubjectEntity
 import com.example.studyassistant.feature.studytracker.domain.model.Subject
 
@@ -23,9 +22,9 @@ fun Subject.toSubjectEntity(): SubjectEntity{
     )
 }
 
-fun Subject.toRemoteSubject(user: User): RemoteSubject{
+fun Subject.toRemoteSubject(userId: String): RemoteSubject{
     return RemoteSubject(
-        userId = user.userId?: "",
+        userId = userId,
         name = name,
         goalHours = goalHours,
         colors = colors,

@@ -1,5 +1,6 @@
 package com.example.studyassistant.feature.authentication.presentation.login
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,10 +40,14 @@ import com.example.studyassistant.ui.theme.StudyAssistantTheme
 @Composable
 fun LoginScreen(
     state: AuthState,
-    changedMap: Map<String, Int>,
+    changedText: String,
+    onChangedTextClear: () -> Unit,
     onAction: (AuthAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    Log.d("SyncDismiss", "SyncChangeInside: $changedText")
+
+
     var email by remember {
         mutableStateOf("")
     }
@@ -50,33 +55,28 @@ fun LoginScreen(
         mutableStateOf("")
     }
 
-    val changedString = if (changedMap.isNotEmpty()) {
-        changedMap.entries.joinToString(separator = "\n") { (key, value) ->
-            "$key Database has $value changes."
-        }
-    } else ""
-
     var isSyncOptionDialogOpen by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(changedString) {
-        isSyncOptionDialogOpen = changedString.isNotBlank()
+    LaunchedEffect(changedText) {
+        isSyncOptionDialogOpen = changedText.isNotBlank()
     }
 
     var isUserChangeDialogOpen by rememberSaveable { mutableStateOf(false) }
 
     SyncOptionDialog(
-        text = changedString,
+        text = changedText,
         isOpen = isSyncOptionDialogOpen,
         onDismiss = {
-            onAction(AuthAction.OnLogoutKeepLocalDataClick)
+            onAction(AuthAction.DismissSync)
+            onChangedTextClear()
             isSyncOptionDialogOpen = false
         },
         onSendLocalDataClick = {
-            onAction(AuthAction.OnSendDataToRemoteClick)
+            onAction(AuthAction.SendDataToRemote)
             isSyncOptionDialogOpen = false
         },
         onGetRemoteDataClick = {
-            onAction(AuthAction.OnGetDataFromRemoteClick)
+            onAction(AuthAction.GetDataFromRemote)
             isSyncOptionDialogOpen = false
         }
     )
@@ -84,9 +84,11 @@ fun LoginScreen(
     UserChangeDialog(
         isOpen = isUserChangeDialogOpen,
         userIsReplacedEmail = state.currentUser?.email ?: "",
-        onDismiss = { isUserChangeDialogOpen = false },
+        onDismiss = {
+            isUserChangeDialogOpen = false
+        },
         onUseNoAccountClick = {
-            onAction(AuthAction.OnUseNoAccountClick)
+            onAction(AuthAction.UseNoAccount)
             isUserChangeDialogOpen = false
         },
     )
@@ -151,16 +153,14 @@ fun LoginScreen(
 
             Button(
                 enabled = !email.isBlank() && !password.isBlank(),
-                onClick = {
-                    onAction(AuthAction.OnLoginClick(email, password))
-                }
+                onClick = { onAction(AuthAction.Login(email, password)) }
             ) {
                 Text(text = "Login")
             }
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                modifier = Modifier.clickable{ onAction(AuthAction.OnToRegisterPageClick) },
+                modifier = Modifier.clickable{ onAction(AuthAction.GoToRegisterPage) },
                 text = "Don't have an account, Register"
             )
 
@@ -171,7 +171,7 @@ fun LoginScreen(
                     if(state.currentUser != null){
                         isUserChangeDialogOpen = true
                     }else{
-                        onAction(AuthAction.OnUseNoAccountClick)
+                        onAction(AuthAction.UseNoAccount)
                     }
                 },
                 text = "Use without account (Data save on local)"
@@ -188,7 +188,8 @@ private fun LoginScreenPreview() {
         LoginScreen(
             state = AuthState(),
             onAction = {},
-            changedMap = emptyMap<String, Int>()
+            changedText = "",
+            onChangedTextClear = {}
         )
     }
 }

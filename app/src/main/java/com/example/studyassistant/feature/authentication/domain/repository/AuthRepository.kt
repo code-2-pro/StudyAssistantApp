@@ -14,6 +14,13 @@ interface AuthRepository {
 
     suspend fun register(email: String, password: String, displayName: String): Result<User, AuthError>
 
+    suspend fun updateUserInfo(
+        currentPassword: String,
+        newDisplayName: String,
+        newEmail: String,
+        newPassword: String
+    ): Result<Unit, AuthError>
+
     suspend fun logout()
 
     suspend fun catchRealtimeUpdates()

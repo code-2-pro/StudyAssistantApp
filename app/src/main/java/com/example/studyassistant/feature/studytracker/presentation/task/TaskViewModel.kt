@@ -5,10 +5,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.example.studyassistant.core.domain.ConnectivityObserver
 import com.example.studyassistant.core.navigation.Navigator
 import com.example.studyassistant.core.navigation.Route.TaskScreen
 import com.example.studyassistant.core.presentation.util.SnackbarController
 import com.example.studyassistant.core.presentation.util.SnackbarEvent
+import com.example.studyassistant.feature.authentication.domain.repository.AuthRepository
 import com.example.studyassistant.feature.studytracker.domain.model.Task
 import com.example.studyassistant.feature.studytracker.domain.repository.SubjectRepository
 import com.example.studyassistant.feature.studytracker.domain.repository.TaskRepository
@@ -17,6 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -28,8 +31,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TaskViewModel @Inject constructor(
+    connectivityObserver: ConnectivityObserver,
     private val taskRepository: TaskRepository,
     private val subjectRepository: SubjectRepository,
+    private val authRepository: AuthRepository,
     private val navigator: Navigator,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
@@ -47,6 +52,13 @@ class TaskViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
         initialValue = TaskState()
     )
+
+    val isOnline: StateFlow<Boolean> = connectivityObserver.isConnected
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false
+        )
 
     init {
         fetchTask()
@@ -93,6 +105,54 @@ class TaskViewModel @Inject constructor(
         }
     }
 
+    private fun saveTask() {
+        viewModelScope.launch{
+            val state = _state.value
+            if(state.subjectId.isBlank() || state.relatedToSubject == null){
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Please select subject related to the task.",
+                        duration = SnackbarDuration.Long
+                    )
+                )
+                return@launch
+            }
+            try {
+                val task = Task(
+                    title = state.title,
+                    description = state.description,
+                    dueDate = state.dueDate ?: Instant.now().toEpochMilli(),
+                    priority = state.priority.value,
+                    relatedToSubject = state.relatedToSubject,
+                    isComplete = state.isTaskComplete,
+                    taskSubjectId = state.subjectId,
+                    taskId = if(state.currentTaskId.isBlank()) {
+                        UUID.randomUUID().toString()
+                    }else state.currentTaskId
+                )
+                taskRepository.upsertTask(task)
+                val currentUser = authRepository.getCurrentUser()
+                if(isOnline.value && currentUser != null){
+                    taskRepository.upsertTaskOnRemote(
+                        task = task,
+                        userId = currentUser.userId.toString()
+                    )
+                }
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(message = "Task Saved Successfully.")
+                )
+                navigator.navigateUp()
+            }catch (e: Exception){
+                SnackbarController.sendEvent(
+                    event = SnackbarEvent(
+                        message = "Couldn't save task. ${e.message}",
+                        duration = SnackbarDuration.Long
+                    )
+                )
+            }
+        }
+    }
+
     private fun deleteTask() {
         viewModelScope.launch{
             try {
@@ -100,6 +160,13 @@ class TaskViewModel @Inject constructor(
                 if(currentTaskId.isNotBlank()){
                     withContext(Dispatchers.IO) {
                         taskRepository.deleteTask(taskId = currentTaskId)
+                        val currentUser = authRepository.getCurrentUser()
+                        if(isOnline.value && currentUser != null){
+                            taskRepository.deleteTaskOnRemote(
+                                taskId = currentTaskId,
+                                userId = currentUser.userId.toString()
+                            )
+                        }
                     }
                     SnackbarController.sendEvent(
                         event = SnackbarEvent(
@@ -119,48 +186,6 @@ class TaskViewModel @Inject constructor(
                     event = SnackbarEvent(
                         message = "Couldn't delete task. ${e.message}",
                         duration =  SnackbarDuration.Long
-                    )
-                )
-            }
-        }
-    }
-
-    private fun saveTask() {
-        viewModelScope.launch{
-            val state = _state.value
-            if(state.subjectId.isBlank() || state.relatedToSubject == null){
-                SnackbarController.sendEvent(
-                    event = SnackbarEvent(
-                        message = "Please select subject related to the task.",
-                        duration = SnackbarDuration.Long
-                    )
-                )
-                return@launch
-            }
-            try {
-                taskRepository.upsertTask(
-                    task = Task(
-                        title = state.title,
-                        description = state.description,
-                        dueDate = state.dueDate ?: Instant.now().toEpochMilli(),
-                        priority = state.priority.value,
-                        relatedToSubject = state.relatedToSubject,
-                        isComplete = state.isTaskComplete,
-                        taskSubjectId = state.subjectId,
-                        taskId = if(state.currentTaskId.isBlank()) {
-                            UUID.randomUUID().toString()
-                        }else state.currentTaskId
-                    )
-                )
-                SnackbarController.sendEvent(
-                    event = SnackbarEvent(message = "Task Saved Successfully.")
-                )
-                navigator.navigateUp()
-            }catch (e: Exception){
-                SnackbarController.sendEvent(
-                    event = SnackbarEvent(
-                        message = "Couldn't save task. ${e.message}",
-                        duration = SnackbarDuration.Long
                     )
                 )
             }

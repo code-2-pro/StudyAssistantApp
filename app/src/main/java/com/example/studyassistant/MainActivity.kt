@@ -19,6 +19,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,9 +54,13 @@ import com.example.studyassistant.feature.authentication.presentation.AuthViewMo
 import com.example.studyassistant.feature.studytracker.presentation.session.StudySessionTimerService
 import com.example.studyassistant.feature.studytracker.presentation.util.Constants.DEEPLINK_DOMAIN
 import com.example.studyassistant.navigation.graph.authentication.route.LoginRoute
-import com.example.studyassistant.navigation.graph.authentication.route.MainSettingRoute
 import com.example.studyassistant.navigation.graph.authentication.route.RegisterRoute
+import com.example.studyassistant.navigation.graph.flashcard.route.CategoryDetailRoute
+import com.example.studyassistant.navigation.graph.flashcard.route.CategoryRoute
+import com.example.studyassistant.navigation.graph.flashcard.route.FlashcardDisplayRoute
 import com.example.studyassistant.navigation.graph.flashcard.route.FlashcardRoute
+import com.example.studyassistant.navigation.graph.setting.MainSettingRoute
+import com.example.studyassistant.navigation.graph.setting.route.AccountRoute
 import com.example.studyassistant.navigation.graph.studytracker.route.DashboardRoute
 import com.example.studyassistant.navigation.graph.studytracker.route.SessionRoute
 import com.example.studyassistant.navigation.graph.studytracker.route.SubjectRoute
@@ -108,7 +113,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
 //            if(isBound){
-                StudyAssistantTheme {
+            val isSystemDarkTheme = isSystemInDarkTheme()
+            var isDarkTheme by remember { mutableStateOf(isSystemDarkTheme) }
+                StudyAssistantTheme ( darkTheme = isDarkTheme ){
                     val authViewModel: AuthViewModel = hiltViewModel()
                     val authState by authViewModel.state.collectAsStateWithLifecycle()
 
@@ -243,24 +250,30 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-                            navigation<Route.Flashcard>(startDestination = Route.FlashcardScreen){
+                            navigation<Route.Flashcard>(startDestination = Route.CategoryScreen) {
+                                composable<Route.CategoryScreen> {
+                                    CategoryRoute(
+                                        updateScaffold = { scaffoldComponentState = it }
+                                    )
+                                }
+                                composable<Route.CategoryDetailScreen> {
+                                    CategoryDetailRoute(
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
+                                    )
+                                }
                                 composable<Route.FlashcardScreen> {
                                     FlashcardRoute(
                                         updateScaffold = { scaffoldComponentState = it },
                                         navController = navController
                                     )
                                 }
-                            }
-                            navigation<Route.Setting>(startDestination = Route.MainSetting){
-                                composable<Route.MainSetting>{
-                                    MainSettingRoute(
-                                        state = authState,
-                                        onLogoutClick = { selectedItemIndex = 0 },
-                                        onAction = authViewModel::onAction,
+                                composable<Route.FlashcardDisplayScreen> {
+                                    FlashcardDisplayRoute(
                                         updateScaffold = { scaffoldComponentState = it },
                                         navController = navController
                                     )
-                                }
+                                } 
                             }
                             navigation<Route.Utility>(startDestination = Route.UtilityScreen){
                                 composable<Route.UtilityScreen>{
@@ -276,6 +289,29 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                            navigation<Route.Setting>(startDestination = Route.MainSettingScreen){
+                                composable<Route.MainSettingScreen>{
+                                    MainSettingRoute(
+                                        state = authState,
+                                        isDarkTheme = isDarkTheme,
+                                        onDarkThemeToggle = { isDarkTheme = !isDarkTheme },
+                                        onLogoutClick = { selectedItemIndex = 0 },
+                                        onAction = authViewModel::onAction,
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
+                                    )
+                                }
+                                composable<Route.AccountScreen>{
+                                    AccountRoute(
+                                        state = authState,
+                                        events = authViewModel.events,
+                                        onAction = authViewModel::onAction,
+                                        updateScaffold = { scaffoldComponentState = it },
+                                        navController = navController
+                                    )
+                                }
+                            }
+
                         }
                     }
                 }

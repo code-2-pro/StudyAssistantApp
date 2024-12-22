@@ -1,7 +1,6 @@
 package com.example.studyassistant.feature.studytracker.data.mapper
 
 import com.example.studyassistant.feature.authentication.data.dto.RemoteTask
-import com.example.studyassistant.feature.authentication.domain.model.User
 import com.example.studyassistant.feature.studytracker.data.local.entity.TaskEntity
 import com.example.studyassistant.feature.studytracker.domain.model.Task
 
@@ -31,9 +30,9 @@ fun Task.toTaskEntity(): TaskEntity{
     )
 }
 
-fun Task.toRemoteTask(user: User): RemoteTask{
+fun Task.toRemoteTask(userId: String): RemoteTask{
     return RemoteTask(
-        userId = user.userId?: "",
+        userId = userId,
         title = title,
         description = description,
         dueDate = dueDate,

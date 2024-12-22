@@ -106,7 +106,7 @@ fun NavGraphBuilder.SessionRoute(
                 multiplePermissionResultLauncher.launch(
                     arrayOf(Manifest.permission.POST_NOTIFICATIONS)
                 )
-            }
+            }else onPostNotificationPermissionGranted(true)
         },
         timerService = timerService
     )

@@ -122,4 +122,7 @@ dependencies {
     // Gemini
     implementation(libs.generativeai)
 
+    // Datastore
+    implementation(libs.androidx.datastore.preferences)
+
 }

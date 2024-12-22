@@ -1,6 +1,8 @@
 package com.example.studyassistant.di
 
 import android.app.Application
+import android.content.Context
+import androidx.datastore.preferences.preferencesDataStore
 import com.example.studyassistant.core.data.networking.AndroidConnectivityObserver
 import com.example.studyassistant.core.domain.ConnectivityObserver
 import com.example.studyassistant.core.navigation.DefaultNavigator
@@ -16,6 +18,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class) // Singleton scope
 object AppModule {
 
+    val Context.dataStore by preferencesDataStore(name = "user_datastore")
+
     @Provides
     @Singleton
     fun provideNavigator(): Navigator {
@@ -29,5 +33,9 @@ object AppModule {
     ): ConnectivityObserver {
         return AndroidConnectivityObserver(context = application)
     }
+
+    @Provides
+    @Singleton
+    fun provideDataStore(context: Context) = context.dataStore
 
 }

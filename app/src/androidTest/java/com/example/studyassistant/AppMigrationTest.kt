@@ -33,6 +33,7 @@ class AppMigrationTest {
         )
             .addMigrations(AppDatabase.migration1To2)
             .addMigrations(AppDatabase.migration2To3)
+            .addMigrations(AppDatabase.migration3To4)
             .build().apply {
             openHelper.writableDatabase.close()
         }

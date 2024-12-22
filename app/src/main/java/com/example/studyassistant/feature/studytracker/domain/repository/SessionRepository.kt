@@ -7,9 +7,13 @@ import kotlinx.coroutines.flow.Flow
 
 interface SessionRepository {
 
-    suspend fun insertSession(session: Session): Result<Unit, RemoteDbError>
+    suspend fun insertSession(session: Session)
 
-    suspend fun deleteSession(session: Session): Result<Unit, RemoteDbError>
+    suspend fun insertSessionOnRemote(session: Session, userId: String): Result<Unit, RemoteDbError>
+
+    suspend fun deleteSession(session: Session)
+
+    suspend fun deleteSessionOnRemote(session: Session , userId: String): Result<Unit, RemoteDbError>
 
     fun getAllSessions(): Flow<List<Session>>
 

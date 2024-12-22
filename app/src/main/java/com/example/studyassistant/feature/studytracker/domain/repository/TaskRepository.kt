@@ -7,9 +7,13 @@ import kotlinx.coroutines.flow.Flow
 
 interface TaskRepository {
 
-    suspend fun upsertTask(task: Task): Result<Unit, RemoteDbError>
+    suspend fun upsertTask(task: Task)
 
-    suspend fun deleteTask(taskId: String): Result<Unit, RemoteDbError>
+    suspend fun upsertTaskOnRemote(task: Task, userId: String): Result<Unit, RemoteDbError>
+
+    suspend fun deleteTask(taskId: String)
+
+    suspend fun deleteTaskOnRemote(taskId: String, userId: String): Result<Unit, RemoteDbError>
 
     fun getTaskById(taskId: String): Flow<Task?>
 

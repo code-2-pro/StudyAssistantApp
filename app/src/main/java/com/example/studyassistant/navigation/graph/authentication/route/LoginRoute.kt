@@ -1,10 +1,13 @@
 package com.example.studyassistant.navigation.graph.authentication.route
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraphBuilder
@@ -16,6 +19,8 @@ import com.example.studyassistant.feature.authentication.presentation.AuthEvent
 import com.example.studyassistant.feature.authentication.presentation.AuthState
 import com.example.studyassistant.feature.authentication.presentation.login.LoginScreen
 import kotlinx.coroutines.flow.Flow
+import kotlin.collections.component1
+import kotlin.collections.component2
 
 @Composable
 fun NavGraphBuilder.LoginRoute(
@@ -36,8 +41,8 @@ fun NavGraphBuilder.LoginRoute(
     }
 
     // Use a mutable state for the map
-    val changedMap = rememberSaveable {
-        mutableStateOf<Map<String, Int>>(emptyMap())
+    var changedText by remember {
+        mutableStateOf("")
     }
     val context = LocalContext.current
 
@@ -59,15 +64,21 @@ fun NavGraphBuilder.LoginRoute(
             }
             is AuthEvent.SyncChange -> {
                 if (event.changedMap.isNotEmpty()) {
-                    changedMap.value = event.changedMap
+                    changedText =
+                    event.changedMap.entries.joinToString(separator = "\n") { (key, value) ->
+                        "$key Database has $value changes."
+                    }
+                    Log.d("SyncDismiss", "SyncChange: $changedText")
                 }
             }
         }
     }
 
+    Log.d("SyncDismiss", "SyncChangeOutside: $changedText")
     LoginScreen(
         state = state,
-        changedMap = changedMap.value, // Pass the actual map
+        changedText = changedText,
+        onChangedTextClear = { changedText = "" },
         onAction = onAction
     )
 }

@@ -17,4 +17,23 @@ sealed interface UserInputError: Error {
         TOO_SHORT,
         TOO_LONG
     }
+    enum class FlashcardCategoryNameError: UserInputError {
+        IS_BLANK,
+        TOO_SHORT,
+        TOO_LONG
+    }
+    enum class FlashcardInputError: UserInputError {
+        IS_BLANK,
+        TOO_SHORT,
+        TOO_LONG
+    }
+
+    enum class CardQuantityError: UserInputError {
+        IS_BLANK,
+        INVALID_NUMBER,
+        AT_LEAST_ONE_CARD,
+        MAX_IS_10_CARD
+    }
+
 }
+
