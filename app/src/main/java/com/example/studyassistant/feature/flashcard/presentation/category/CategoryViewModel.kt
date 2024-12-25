@@ -275,6 +275,12 @@ class CategoryViewModel @Inject constructor(
                     "Response only true if the following string has meaning, " +
                             "else only false. String: ${state.value.categoryName}"
                 )
+//                generativeModel.generateContent(
+//                    "Respond only true if the following string meets all these requirements: " +
+//                            "1. The string is clear and has meaning. " +
+//                            "2. The string could be used to create a concise educational question-answer pair. " +
+//                            "If any of these conditions are not met, respond with false. String: '${state.value.categoryName}'"
+//                )
             }
             Log.e("CheckHasMeaningError", response.text.toString())
             _state.update { it.copy(isLoading =  false) }

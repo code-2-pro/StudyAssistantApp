@@ -24,4 +24,5 @@ sealed interface AuthAction {
     object GetDataFromRemote: AuthAction
     object DismissSync: AuthAction
     object UseNoAccount: AuthAction
+    data class ToggleDarkTheme(val isEnabled: Boolean): AuthAction
 }

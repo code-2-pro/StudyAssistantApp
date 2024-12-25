@@ -1,6 +1,10 @@
 package com.example.studyassistant.feature.authentication.presentation
 
 import android.util.Log
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studyassistant.core.domain.ConnectivityObserver
@@ -14,9 +18,12 @@ import com.example.studyassistant.core.presentation.util.SnackbarEvent
 import com.example.studyassistant.feature.authentication.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -27,42 +34,88 @@ import javax.inject.Inject
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     connectivityObserver: ConnectivityObserver,
+    private val dataStore: DataStore<Preferences>,
     private val navigator: Navigator
 ): ViewModel() {
+
+    // Define the preferences keys
+    private val USER_DARK_THEME_KEY = booleanPreferencesKey("user_dark_theme")
 
     private val _state = MutableStateFlow(AuthState())
     val state = combine(
         _state,
-        connectivityObserver.isConnected,
-        authRepository.checkHasLocalData()
-    ){ state, isConnected, hasLocalData ->
-        state.copy(
-            isConnected = isConnected,
-            hasLocalData = hasLocalData
-        )
+        authRepository.checkHasLocalData(),
+    ){ state, hasLocalData->
+        state.copy(hasLocalData = hasLocalData)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = AuthState()
     )
 
+    val isOnline: StateFlow<Boolean> = connectivityObserver.isConnected
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false
+        )
+
+
     private val _events = Channel<AuthEvent>()
     val events = _events.receiveAsFlow()
 
 
     init {
-        checkAuthStatus()
+        viewModelScope.launch {
+            delay(1000L) // Delay by 1 seconds to allow isOnline to stabilize
+            val isOnlineNow = isOnline.first() // Collect the first value after the delay
+            checkAuthStatus(isOnlineNow)
+        }
     }
 
-    fun checkAuthStatus(){
-        viewModelScope.launch{
-            _state.update { it.copy(isLoading = true) }
-            val user = authRepository.getCurrentUser()
-            if(user != null){
-                _state.update {
-                    it.copy(currentUser = user)
-                }
+    suspend fun checkAuthStatus(isOnline: Boolean) {
+        _state.update { it.copy(isLoading = true) }
+        val user = authRepository.getCurrentUser()
+        Log.e("isOnline", isOnline.toString())
+
+        if (user != null) {
+            _state.update { it.copy(currentUser = user) }
+
+            if (isOnline) {
+                authRepository.checkDataConsistency()
+                    .onSuccess { changedMap ->
+                        _state.update { it.copy(isLoading = false) }
+                        Log.e("Sync", "Success")
+                        if (changedMap.isNotEmpty()) {
+                            _events.send(AuthEvent.SyncChange(changedMap))
+                        } else {
+                            Log.e("Sync", "Reach No Changed")
+                            navigator.navigate(
+                                route = Route.StudyTracker,
+                                navOptions = {
+                                    popUpTo(Route.Authentication) {
+                                        inclusive = true
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .onError { error ->
+                        _state.update { it.copy(isLoading = false) }
+                        _events.send(AuthEvent.SyncError(error))
+                        Log.e("SyncError", error.message)
+                    }
+            } else {
+                navigator.navigate(
+                    route = Route.StudyTracker,
+                    navOptions = {
+                        popUpTo(Route.Authentication) {
+                            inclusive = true
+                        }
+                    }
+                )
             }
+        } else {
             _state.update { it.copy(isLoading = false) }
         }
     }
@@ -70,14 +123,14 @@ class AuthViewModel @Inject constructor(
     fun catchRealtimeUpdate(){
         viewModelScope.launch{
             _state.update { it.copy(isLoading = true) }
-            if(state.value.isConnected){
+            if(isOnline.value){
                 authRepository.catchRealtimeUpdates()
             }
             _state.update { it.copy(isLoading = false) }
         }
     }
 
-     fun onAction(action: AuthAction){
+    fun onAction(action: AuthAction){
         when(action){
             is AuthAction.Login -> login(action.email, action.password)
             is AuthAction.Register -> {
@@ -93,24 +146,39 @@ class AuthViewModel @Inject constructor(
             }
             AuthAction.GoToLoginPage -> goToLoginPage()
             AuthAction.GoToRegisterPage -> goToRegisterPage()
-            AuthAction.GetDataFromRemote -> {
-                getDataFromRemote()
-            }
-            AuthAction.SendDataToRemote -> {
-                sendDataToRemote()
-            }
-            AuthAction.UseNoAccount -> {
-                useNoAccount()
-            }
-            AuthAction.LogoutKeepLocalData -> {
-                logoutWithKeepLocalData()
-            }
-            AuthAction.LogoutRemoveLocalData -> {
-                logoutWithRemoveLocalData()
-            }
+            AuthAction.GetDataFromRemote -> getDataFromRemote()
+            AuthAction.SendDataToRemote ->  sendDataToRemote()
+            AuthAction.UseNoAccount -> useNoAccount()
+            AuthAction.LogoutKeepLocalData -> logoutWithKeepLocalData()
+            AuthAction.LogoutRemoveLocalData -> logoutWithRemoveLocalData()
             AuthAction.DismissSync -> dismissSync()
+            is AuthAction.ToggleDarkTheme -> saveDarkThemeOption(action.isEnabled)
         }
     }
+
+
+    // Write data to DataStore
+    private fun saveDarkThemeOption(isEnabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                preferences[USER_DARK_THEME_KEY] = isEnabled
+            }
+        }
+    }
+
+    // Clears all keys and their values from DataStore
+    private fun clearAllDataStore() {
+        viewModelScope.launch {
+            try {
+                dataStore.edit { preferences ->
+                    preferences.clear()
+                }
+            } catch (e: Exception) {
+                Log.e("DataStore", "Error clearing DataStore", e)
+            }
+        }
+    }
+
 
     private fun dismissSync(){
         viewModelScope.launch{
@@ -276,46 +344,40 @@ class AuthViewModel @Inject constructor(
                 _events.send(AuthEvent.AuthenticationError(AuthError.PASSWORD_IS_BLANK))
                 return@launch
             }
-
             _state.update { it.copy(isLoading = true) }
-            if(state.value.isConnected){
-                authRepository.login(email, password)
-                    .onSuccess {  user ->
-                        authRepository.checkDataConsistency()
-                            .onSuccess { changedMap ->
-                                _state.update { it.copy(
-                                    isLoading = false,
-                                    currentUser = user
-                                ) }
-                                Log.e("Sync", "Success")
-                                if(changedMap.isNotEmpty()){
-                                    _events.send(AuthEvent.SyncChange(changedMap))
-                                }else{
-                                    Log.e("Sync", "Reach No Changed")
-                                    navigator.navigate(
-                                        route =  Route.StudyTracker,
-                                        navOptions = {
-                                            popUpTo(Route.Authentication) {
-                                                inclusive = true
-                                            }
+            authRepository.login(email, password)
+                .onSuccess {  user ->
+                    authRepository.checkDataConsistency()
+                        .onSuccess { changedMap ->
+                            _state.update { it.copy(
+                                isLoading = false,
+                                currentUser = user
+                            ) }
+                            Log.e("Sync", "Success")
+                            if(changedMap.isNotEmpty()){
+                                _events.send(AuthEvent.SyncChange(changedMap))
+                            }else{
+                                Log.e("Sync", "Reach No Changed")
+                                navigator.navigate(
+                                    route =  Route.StudyTracker,
+                                    navOptions = {
+                                        popUpTo(Route.Authentication) {
+                                            inclusive = true
                                         }
-                                    )
-                                }
+                                    }
+                                )
                             }
-                            .onError { error ->
-                                _state.update { it.copy(isLoading = false) }
-                                _events.send(AuthEvent.SyncError(error))
-                                Log.e("SyncError", error.message)
-                            }
-                    }
-                    .onError { error ->
-                        _state.update { it.copy(isLoading = false) }
-                        _events.send(AuthEvent.AuthenticationError(error))
-                    }
-            }else{
-                // Get login info from Data store
-                _state.update { it.copy(isLoading = false) }
-            }
+                        }
+                        .onError { error ->
+                            _state.update { it.copy(isLoading = false) }
+                            _events.send(AuthEvent.SyncError(error))
+                            Log.e("SyncError", error.message)
+                        }
+                }
+                .onError { error ->
+                    _state.update { it.copy(isLoading = false) }
+                    _events.send(AuthEvent.AuthenticationError(error))
+                }
         }
     }
 

@@ -36,6 +36,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
@@ -50,6 +53,7 @@ import com.example.studyassistant.core.presentation.ScaffoldComponentState
 import com.example.studyassistant.core.presentation.components.BottomBarNavigation
 import com.example.studyassistant.core.presentation.util.ObserveAsEvents
 import com.example.studyassistant.core.presentation.util.SnackbarController
+import com.example.studyassistant.feature.authentication.presentation.AuthAction
 import com.example.studyassistant.feature.authentication.presentation.AuthViewModel
 import com.example.studyassistant.feature.studytracker.presentation.session.StudySessionTimerService
 import com.example.studyassistant.feature.studytracker.presentation.util.Constants.DEEPLINK_DOMAIN
@@ -69,7 +73,10 @@ import com.example.studyassistant.navigation.graph.utillity.UtilityRoute
 import com.example.studyassistant.navigation.graph.utillity.route.AssistantRoute
 import com.example.studyassistant.ui.theme.StudyAssistantTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 
@@ -106,19 +113,36 @@ class MainActivity : ComponentActivity() {
         Intent(this, StudySessionTimerService::class.java).also {intent ->
             bindService(intent, connection, BIND_AUTO_CREATE)
         }
+
     }
+
+    @Inject
+    lateinit var dataStore: DataStore<Preferences>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Use runBlocking to synchronously read the theme from DataStore
+        val initialDarkTheme = runBlocking {
+            dataStore.data
+                .map { preferences ->
+                    preferences[booleanPreferencesKey("user_dark_theme")]
+                }
+                .first()
+        }
+
         setContent {
 //            if(isBound){
-            val isSystemDarkTheme = isSystemInDarkTheme()
-            var isDarkTheme by remember { mutableStateOf(isSystemDarkTheme) }
-                StudyAssistantTheme ( darkTheme = isDarkTheme ){
+            val isDarkTheme = initialDarkTheme?: isSystemInDarkTheme()
+            // Determine the theme, falling back to system default if null
+            var appliedDarkTheme by remember {
+                mutableStateOf(isDarkTheme)
+            }
+
+                StudyAssistantTheme ( darkTheme = appliedDarkTheme){
                     val authViewModel: AuthViewModel = hiltViewModel()
                     val authState by authViewModel.state.collectAsStateWithLifecycle()
-
                     var isPostNotificationPermissionGranted = remember {
                         mutableStateOf <Boolean> (
                             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -149,7 +173,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    
+
                     var selectedItemIndex by rememberSaveable {
                         mutableIntStateOf(0)
                     }
@@ -273,7 +297,7 @@ class MainActivity : ComponentActivity() {
                                         updateScaffold = { scaffoldComponentState = it },
                                         navController = navController
                                     )
-                                } 
+                                }
                             }
                             navigation<Route.Utility>(startDestination = Route.UtilityScreen){
                                 composable<Route.UtilityScreen>{
@@ -293,8 +317,11 @@ class MainActivity : ComponentActivity() {
                                 composable<Route.MainSettingScreen>{
                                     MainSettingRoute(
                                         state = authState,
-                                        isDarkTheme = isDarkTheme,
-                                        onDarkThemeToggle = { isDarkTheme = !isDarkTheme },
+                                        isDarkTheme = appliedDarkTheme,
+                                        onDarkThemeToggle = {
+                                            appliedDarkTheme = !appliedDarkTheme
+                                            authViewModel.onAction(AuthAction.ToggleDarkTheme(appliedDarkTheme))
+                                        },
                                         onLogoutClick = { selectedItemIndex = 0 },
                                         onAction = authViewModel::onAction,
                                         updateScaffold = { scaffoldComponentState = it },

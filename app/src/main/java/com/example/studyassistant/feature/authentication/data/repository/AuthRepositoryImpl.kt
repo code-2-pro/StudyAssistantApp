@@ -23,8 +23,6 @@ import com.example.studyassistant.feature.flashcard.data.mapper.toRemoteFlashcar
 import com.example.studyassistant.feature.flashcard.data.mapper.toRemoteFlashcardCategory
 import com.example.studyassistant.feature.flashcard.domain.model.Flashcard
 import com.example.studyassistant.feature.flashcard.domain.model.FlashcardCategory
-import com.example.studyassistant.feature.flashcard.domain.repository.FlashcardCategoryRepository
-import com.example.studyassistant.feature.flashcard.domain.repository.FlashcardRepository
 import com.example.studyassistant.feature.studytracker.data.local.dao.SessionDao
 import com.example.studyassistant.feature.studytracker.data.local.dao.SubjectDao
 import com.example.studyassistant.feature.studytracker.data.local.dao.TaskDao
@@ -40,9 +38,6 @@ import com.example.studyassistant.feature.studytracker.data.mapper.toTaskEntity
 import com.example.studyassistant.feature.studytracker.domain.model.Session
 import com.example.studyassistant.feature.studytracker.domain.model.Subject
 import com.example.studyassistant.feature.studytracker.domain.model.Task
-import com.example.studyassistant.feature.studytracker.domain.repository.SessionRepository
-import com.example.studyassistant.feature.studytracker.domain.repository.SubjectRepository
-import com.example.studyassistant.feature.studytracker.domain.repository.TaskRepository
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
@@ -65,11 +60,6 @@ class AuthRepositoryImpl @Inject constructor(
     private val sessionDao: SessionDao,
     private val flashcardDao: FlashcardDao,
     private val flashcardCategoryDao: FlashcardCategoryDao,
-    private val subjectRepository: SubjectRepository,
-    private val taskRepository: TaskRepository,
-    private val sessionRepository: SessionRepository,
-    private val flashcardRepository: FlashcardRepository,
-    private val flashcardCategoryRepository: FlashcardCategoryRepository
 ): AuthRepository {
 
     override suspend fun getCurrentUser(): User? {
@@ -170,9 +160,9 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun catchRealtimeUpdates() {
-        subjectRepository.subscribeToRealtimeUpdates()
-        taskRepository.subscribeToRealtimeUpdates()
-        sessionRepository.subscribeToRealtimeUpdates()
+//        subjectRepository.subscribeToRealtimeUpdates()
+//        taskRepository.subscribeToRealtimeUpdates()
+//        sessionRepository.subscribeToRealtimeUpdates()
     }
 
     override suspend fun getRemoteDataForLocal(): Result<Unit, RemoteDbError> {

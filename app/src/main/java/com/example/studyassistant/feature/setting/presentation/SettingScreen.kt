@@ -71,7 +71,9 @@ fun SettingsScreen(
                 state = state,
                 listState = listState,
                 isDarkTheme = isDarkTheme,
-                onDarkThemeToggle = onDarkThemeToggle,
+                onDarkThemeToggle = {
+                    onDarkThemeToggle()
+                },
                 onAccountClick = onAccountClick,
                 onLogoutClick = {
                     if (state.hasLocalData) {
